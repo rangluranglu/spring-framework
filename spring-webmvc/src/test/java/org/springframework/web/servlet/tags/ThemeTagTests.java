@@ -19,11 +19,12 @@ package org.springframework.web.servlet.tags;
 import java.util.Arrays;
 import java.util.List;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.jsp.JspException;
-import jakarta.servlet.jsp.PageContext;
-import jakarta.servlet.jsp.tagext.Tag;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.jsp.JspException;
+import javax.servlet.jsp.PageContext;
+import javax.servlet.jsp.tagext.Tag;
+
 import org.junit.jupiter.api.Test;
 
 import org.springframework.context.MessageSourceResolvable;
@@ -36,7 +37,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Juergen Hoeller
  * @author Alef Arendsen
  */
-@SuppressWarnings("deprecation")
 class ThemeTagTests extends AbstractTagTests {
 
 	@Test

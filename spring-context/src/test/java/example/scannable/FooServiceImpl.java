@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Future;
 
-import jakarta.annotation.PostConstruct;
+import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -35,6 +35,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -91,11 +92,10 @@ public abstract class FooServiceImpl implements FooService {
 	}
 
 	@Override
-	@SuppressWarnings("deprecation")
 	public Future<String> asyncFoo(int id) {
 		System.out.println(Thread.currentThread().getName());
 		Assert.state(ServiceInvocationCounter.getThreadLocalCount() != null, "Thread-local counter not exposed");
-		return new org.springframework.scheduling.annotation.AsyncResult<>(fooDao().findFoo(id));
+		return new AsyncResult<>(fooDao().findFoo(id));
 	}
 
 	@Override

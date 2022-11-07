@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.web.reactive.result.condition;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -106,14 +107,10 @@ public class PatternsRequestConditionTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	public void matchTrailingSlash() {
 		MockServerWebExchange exchange = MockServerWebExchange.from(get("/foo/"));
 
-		PathPatternParser patternParser = new PathPatternParser();
-		patternParser.setMatchOptionalTrailingSeparator(true);
-
-		PatternsRequestCondition condition = new PatternsRequestCondition(patternParser.parse("/foo"));
+		PatternsRequestCondition condition = createPatternsCondition("/foo");
 		PatternsRequestCondition match = condition.getMatchingCondition(exchange);
 
 		assertThat(match).isNotNull();
@@ -121,7 +118,7 @@ public class PatternsRequestConditionTests {
 				.as("Should match by default")
 				.isEqualTo("/foo");
 
-		condition = new PatternsRequestCondition(patternParser.parse("/foo"));
+		condition = createPatternsCondition("/foo");
 		match = condition.getMatchingCondition(exchange);
 
 		assertThat(match).isNotNull();
@@ -209,7 +206,7 @@ public class PatternsRequestConditionTests {
 		return new PatternsRequestCondition(Arrays
 				.stream(patterns)
 				.map(this.parser::parse)
-				.toList());
+				.collect(Collectors.toList()));
 	}
 
 }

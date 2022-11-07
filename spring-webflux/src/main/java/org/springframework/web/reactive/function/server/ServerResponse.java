@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.codec.HttpMessageWriter;
@@ -61,17 +60,19 @@ public interface ServerResponse {
 
 	/**
 	 * Return the status code of this response.
-	 * @return the status as an HttpStatusCode value
+	 * @return the status as an HttpStatus enum value
+	 * @throws IllegalArgumentException in case of an unknown HTTP status code
+	 * @see HttpStatus#valueOf(int)
 	 */
-	HttpStatusCode statusCode();
+	HttpStatus statusCode();
 
 	/**
-	 * Return the status code of this response as integer.
+	 * Return the (potentially non-standard) status code of this response.
 	 * @return the status as an integer
 	 * @since 5.2
-	 * @deprecated as of 6.0, in favor of {@link #statusCode()}
+	 * @see #statusCode()
+	 * @see HttpStatus#resolve(int)
 	 */
-	@Deprecated(since = "6.0")
 	int rawStatusCode();
 
 	/**
@@ -109,7 +110,7 @@ public interface ServerResponse {
 	 * @param status the response status
 	 * @return the created builder
 	 */
-	static BodyBuilder status(HttpStatusCode status) {
+	static BodyBuilder status(HttpStatus status) {
 		return new DefaultServerResponseBuilder(status);
 	}
 
@@ -120,7 +121,7 @@ public interface ServerResponse {
 	 * @since 5.0.3
 	 */
 	static BodyBuilder status(int status) {
-		return new DefaultServerResponseBuilder(HttpStatusCode.valueOf(status));
+		return new DefaultServerResponseBuilder(status);
 	}
 
 	/**

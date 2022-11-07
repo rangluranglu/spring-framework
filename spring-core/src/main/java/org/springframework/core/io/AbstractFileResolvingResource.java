@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
@@ -28,7 +27,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.StandardOpenOption;
-import java.util.jar.JarEntry;
 
 import org.springframework.util.ResourceUtils;
 
@@ -109,22 +107,13 @@ public abstract class AbstractFileResolvingResource extends AbstractResource {
 				// Try InputStream resolution for jar resources
 				URLConnection con = url.openConnection();
 				customizeConnection(con);
-				if (con instanceof HttpURLConnection httpCon) {
+				if (con instanceof HttpURLConnection) {
+					HttpURLConnection httpCon = (HttpURLConnection) con;
 					httpCon.setRequestMethod("HEAD");
 					int code = httpCon.getResponseCode();
 					if (code != HttpURLConnection.HTTP_OK) {
 						httpCon.disconnect();
 						return false;
-					}
-				}
-				else if (con instanceof JarURLConnection) {
-					JarURLConnection jarCon = (JarURLConnection) con;
-					JarEntry jarEntry = jarCon.getJarEntry();
-					if (jarEntry == null) {
-						return false;
-					}
-					else {
-						return !jarEntry.isDirectory();
 					}
 				}
 				long contentLength = con.getContentLengthLong();
@@ -258,7 +247,8 @@ public abstract class AbstractFileResolvingResource extends AbstractResource {
 			// Try a URL connection content-length header
 			URLConnection con = url.openConnection();
 			customizeConnection(con);
-			if (con instanceof HttpURLConnection httpCon) {
+			if (con instanceof HttpURLConnection) {
+				HttpURLConnection httpCon = (HttpURLConnection) con;
 				httpCon.setRequestMethod("HEAD");
 			}
 			return con.getContentLengthLong();
@@ -286,7 +276,8 @@ public abstract class AbstractFileResolvingResource extends AbstractResource {
 		// Try a URL connection last-modified header
 		URLConnection con = url.openConnection();
 		customizeConnection(con);
-		if (con instanceof HttpURLConnection httpCon) {
+		if (con instanceof HttpURLConnection) {
+			HttpURLConnection httpCon = (HttpURLConnection) con;
 			httpCon.setRequestMethod("HEAD");
 		}
 		long lastModified = con.getLastModified();
@@ -307,8 +298,8 @@ public abstract class AbstractFileResolvingResource extends AbstractResource {
 	 */
 	protected void customizeConnection(URLConnection con) throws IOException {
 		ResourceUtils.useCachesIfNecessary(con);
-		if (con instanceof HttpURLConnection httpConn) {
-			customizeConnection(httpConn);
+		if (con instanceof HttpURLConnection) {
+			customizeConnection((HttpURLConnection) con);
 		}
 	}
 

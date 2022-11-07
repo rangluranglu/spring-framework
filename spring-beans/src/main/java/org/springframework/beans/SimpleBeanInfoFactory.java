@@ -29,8 +29,7 @@ import org.springframework.lang.NonNull;
  * {@link BeanInfoFactory} implementation that bypasses the standard {@link java.beans.Introspector}
  * for faster introspection, reduced to basic property determination (as commonly needed in Spring).
  *
- * <p>Used by default in 6.0 through direct invocation from {@link CachedIntrospectionResults}.
- * Potentially configured via a {@code META-INF/spring.factories} file with the following content,
+ * <p>To be configured via a {@code META-INF/spring.factories} file with the following content,
  * overriding other custom {@code org.springframework.beans.BeanInfoFactory} declarations:
  * {@code org.springframework.beans.BeanInfoFactory=org.springframework.beans.SimpleBeanInfoFactory}
  *
@@ -43,7 +42,7 @@ import org.springframework.lang.NonNull;
  * @see ExtendedBeanInfoFactory
  * @see CachedIntrospectionResults
  */
-class SimpleBeanInfoFactory implements BeanInfoFactory, Ordered {
+public class SimpleBeanInfoFactory implements BeanInfoFactory, Ordered {
 
 	@Override
 	@NonNull

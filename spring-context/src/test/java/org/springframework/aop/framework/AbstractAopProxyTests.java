@@ -97,12 +97,12 @@ public abstract class AbstractAopProxyTests {
 	 * to ensure that it was used appropriately by code.
 	 */
 	@BeforeEach
-	public void reset() {
+	public void setUp() {
 		mockTargetSource.reset();
 	}
 
 	@AfterEach
-	public void verify() {
+	public void tearDown() {
 		mockTargetSource.verify();
 	}
 
@@ -121,6 +121,16 @@ public abstract class AbstractAopProxyTests {
 		return false;
 	}
 
+
+	@Test
+	public void testNoInterceptorsAndNoTarget() {
+		assertThatExceptionOfType(AopConfigException.class).isThrownBy(() -> {
+				AdvisedSupport pc = new AdvisedSupport(ITestBean.class);
+				//Add no interceptors
+				AopProxy aop = createAopProxy(pc);
+				aop.getProxy();
+		});
+	}
 
 	/**
 	 * Simple test that if we set values we can get them out again.

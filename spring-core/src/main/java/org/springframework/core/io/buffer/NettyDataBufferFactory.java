@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import org.springframework.util.Assert;
 
 /**
  * Implementation of the {@code DataBufferFactory} interface based on a
- * Netty 4 {@link ByteBufAllocator}.
+ * Netty {@link ByteBufAllocator}.
  *
  * @author Arjen Poutsma
  * @author Juergen Hoeller
@@ -61,7 +61,6 @@ public class NettyDataBufferFactory implements DataBufferFactory {
 	}
 
 	@Override
-	@Deprecated
 	public NettyDataBuffer allocateBuffer() {
 		ByteBuf byteBuf = this.byteBufAllocator.buffer();
 		return new NettyDataBuffer(byteBuf, this);
@@ -114,11 +113,6 @@ public class NettyDataBufferFactory implements DataBufferFactory {
 		return new NettyDataBuffer(composite, this);
 	}
 
-	@Override
-	public boolean isDirect() {
-		return this.byteBufAllocator.isDirectBufferPooled();
-	}
-
 	/**
 	 * Return the given Netty {@link DataBuffer} as a {@link ByteBuf}.
 	 * <p>Returns the {@linkplain NettyDataBuffer#getNativeBuffer() native buffer}
@@ -128,11 +122,11 @@ public class NettyDataBufferFactory implements DataBufferFactory {
 	 * @return the netty {@code ByteBuf}
 	 */
 	public static ByteBuf toByteBuf(DataBuffer buffer) {
-		if (buffer instanceof NettyDataBuffer nettyDataBuffer) {
-			return nettyDataBuffer.getNativeBuffer();
+		if (buffer instanceof NettyDataBuffer) {
+			return ((NettyDataBuffer) buffer).getNativeBuffer();
 		}
 		else {
-			return Unpooled.wrappedBuffer(buffer.toByteBuffer());
+			return Unpooled.wrappedBuffer(buffer.asByteBuffer());
 		}
 	}
 

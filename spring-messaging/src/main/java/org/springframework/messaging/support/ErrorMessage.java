@@ -46,7 +46,6 @@ public class ErrorMessage extends GenericMessage<Throwable> {
 	private static final long serialVersionUID = -5470210965279837728L;
 
 	@Nullable
-	@SuppressWarnings("serial")
 	private final Message<?> originalMessage;
 
 

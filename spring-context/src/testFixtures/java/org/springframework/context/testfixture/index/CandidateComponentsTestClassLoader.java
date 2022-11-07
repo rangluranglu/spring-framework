@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.context.index.CandidateComponentsIndexLoader;
@@ -62,7 +63,7 @@ public class CandidateComponentsTestClassLoader extends ClassLoader {
 					catch (Exception ex) {
 						throw new IllegalArgumentException("Invalid resource " + r, ex);
 					}
-				}).toList()));
+				}).collect(Collectors.toList())));
 	}
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import org.springframework.util.StringUtils;
  * strongly typed accessors for specific headers, the ability to leave headers
  * in a {@link Message} mutable, and the option to suppress automatic generation
  * of {@link MessageHeaders#ID id} and {@link MessageHeaders#TIMESTAMP
- * timesteamp} headers. Subclasses such as {@link NativeMessageHeaderAccessor}
+ * timestamp} headers. Subclasses such as {@link NativeMessageHeaderAccessor}
  * and others provide support for managing processing vs external source headers
  * as well as protocol specific headers.
  *
@@ -495,12 +495,14 @@ public class MessageHeaderAccessor {
 	}
 
 	protected String getShortPayloadLogMessage(Object payload) {
-		if (payload instanceof String payloadText) {
+		if (payload instanceof String) {
+			String payloadText = (String) payload;
 			return (payloadText.length() < 80) ?
 				" payload=" + payloadText :
 				" payload=" + payloadText.substring(0, 80) + "...(truncated)";
 		}
-		else if (payload instanceof byte[] bytes) {
+		else if (payload instanceof byte[]) {
+			byte[] bytes = (byte[]) payload;
 			if (isReadableContentType()) {
 				return (bytes.length < 80) ?
 						" payload=" + new String(bytes, getCharset()) :
@@ -522,7 +524,8 @@ public class MessageHeaderAccessor {
 		if (payload instanceof String) {
 			return " payload=" + payload;
 		}
-		else if (payload instanceof byte[] bytes) {
+		else if (payload instanceof byte[]) {
+			byte[] bytes = (byte[]) payload;
 			if (isReadableContentType()) {
 				return " payload=" + new String(bytes, getCharset());
 			}
@@ -598,7 +601,8 @@ public class MessageHeaderAccessor {
 	public static <T extends MessageHeaderAccessor> T getAccessor(
 			MessageHeaders messageHeaders, @Nullable Class<T> requiredType) {
 
-		if (messageHeaders instanceof MutableMessageHeaders mutableHeaders) {
+		if (messageHeaders instanceof MutableMessageHeaders) {
+			MutableMessageHeaders mutableHeaders = (MutableMessageHeaders) messageHeaders;
 			MessageHeaderAccessor headerAccessor = mutableHeaders.getAccessor();
 			if (requiredType == null || requiredType.isInstance(headerAccessor))  {
 				return (T) headerAccessor;

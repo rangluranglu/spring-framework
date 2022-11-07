@@ -17,11 +17,10 @@
 package org.springframework.messaging.simp.stomp;
 
 import java.security.Principal;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,13 +42,13 @@ import org.springframework.messaging.support.MessageHeaderInitializer;
 import org.springframework.messaging.tcp.FixedIntervalReconnectStrategy;
 import org.springframework.messaging.tcp.TcpConnection;
 import org.springframework.messaging.tcp.TcpOperations;
-import org.springframework.messaging.tcp.reactor.ReactorNetty2TcpClient;
 import org.springframework.messaging.tcp.reactor.ReactorNettyCodec;
 import org.springframework.messaging.tcp.reactor.ReactorNettyTcpClient;
-import org.springframework.messaging.tcp.reactor.TcpMessageCodec;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.util.concurrent.ListenableFutureTask;
 
 /**
  * A {@link org.springframework.messaging.MessageHandler} that handles messages by
@@ -98,24 +97,17 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 
 	private static final byte[] EMPTY_PAYLOAD = new byte[0];
 
-	private static final CompletableFuture<Void> EMPTY_TASK = CompletableFuture.completedFuture(null);
+	private static final ListenableFutureTask<Void> EMPTY_TASK = new ListenableFutureTask<>(new VoidCallable());
 
 	private static final StompHeaderAccessor HEART_BEAT_ACCESSOR;
 
 	private static final Message<byte[]> HEARTBEAT_MESSAGE;
 
-	private static final boolean reactorNettyClientPresent;
-
-	private static final boolean reactorNetty2ClientPresent;
-
 	static {
+		EMPTY_TASK.run();
 		HEART_BEAT_ACCESSOR = StompHeaderAccessor.createForHeartbeat();
 		HEARTBEAT_MESSAGE = MessageBuilder.createMessage(
 				StompDecoder.HEARTBEAT_PAYLOAD, HEART_BEAT_ACCESSOR.getMessageHeaders());
-
-		ClassLoader classLoader = StompBrokerRelayMessageHandler.class.getClassLoader();
-		reactorNettyClientPresent = ClassUtils.isPresent("reactor.netty.http.client.HttpClient", classLoader);
-		reactorNetty2ClientPresent = ClassUtils.isPresent("reactor.netty5.http.client.HttpClient", classLoader);
 	}
 
 
@@ -356,8 +348,7 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 
 	/**
 	 * Configure a TCP client for managing TCP connections to the STOMP broker.
-	 * <p>By default {@link ReactorNettyTcpClient} or
-	 * {@link ReactorNetty2TcpClient} is used.
+	 * <p>By default {@link ReactorNettyTcpClient} is used.
 	 * <p><strong>Note:</strong> when this property is used, any
 	 * {@link #setRelayHost(String) host} or {@link #setRelayPort(int) port}
 	 * specified are effectively ignored.
@@ -463,31 +454,22 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 		this.connectionHandlers.put(handler.getSessionId(), handler);
 
 		this.stats.incrementConnectCount();
-		this.tcpClient.connectAsync(handler, new FixedIntervalReconnectStrategy(5000));
+		this.tcpClient.connect(handler, new FixedIntervalReconnectStrategy(5000));
 
 		if (this.taskScheduler != null) {
-			this.taskScheduler.scheduleWithFixedDelay(new ClientSendMessageCountTask(), Duration.ofMillis(5000));
+			this.taskScheduler.scheduleWithFixedDelay(new ClientSendMessageCountTask(), 5000);
 		}
 	}
 
-	private TcpOperations<byte[]> initTcpClient() {
+	private ReactorNettyTcpClient<byte[]> initTcpClient() {
 		StompDecoder decoder = new StompDecoder();
 		if (this.headerInitializer != null) {
 			decoder.setHeaderInitializer(this.headerInitializer);
 		}
-		if (reactorNettyClientPresent) {
-			ReactorNettyCodec<byte[]> codec = new StompReactorNettyCodec(decoder);
-			ReactorNettyTcpClient<byte[]> client = new ReactorNettyTcpClient<>(this.relayHost, this.relayPort, codec);
-			client.setLogger(SimpLogging.forLog(client.getLogger()));
-			return client;
-		}
-		else if (reactorNetty2ClientPresent) {
-			TcpMessageCodec<byte[]> codec = new StompTcpMessageCodec(decoder);
-			ReactorNetty2TcpClient<byte[]> client = new ReactorNetty2TcpClient<>(this.relayHost, this.relayPort, codec);
-			client.setLogger(SimpLogging.forLog(client.getLogger()));
-			return client;
-		}
-		throw new IllegalStateException("No compatible version of Reactor Netty");
+		ReactorNettyCodec<byte[]> codec = new StompReactorNettyCodec(decoder);
+		ReactorNettyTcpClient<byte[]> client = new ReactorNettyTcpClient<>(this.relayHost, this.relayPort, codec);
+		client.setLogger(SimpLogging.forLog(client.getLogger()));
+		return client;
 	}
 
 	@Override
@@ -495,7 +477,7 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 		publishBrokerUnavailableEvent();
 		if (this.tcpClient != null) {
 			try {
-				this.tcpClient.shutdownAsync().get(5000, TimeUnit.MILLISECONDS);
+				this.tcpClient.shutdown().get(5000, TimeUnit.MILLISECONDS);
 			}
 			catch (Throwable ex) {
 				logger.error("Error in shutdown of TCP client", ex);
@@ -589,7 +571,7 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 			this.connectionHandlers.put(sessionId, handler);
 			this.stats.incrementConnectCount();
 			Assert.state(this.tcpClient != null, "No TCP client available");
-			this.tcpClient.connectAsync(handler);
+			this.tcpClient.connect(handler);
 		}
 		else if (StompCommand.DISCONNECT.equals(command)) {
 			RelayConnectionHandler handler = this.connectionHandlers.get(sessionId);
@@ -681,7 +663,6 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 		}
 
 
-		@Override
 		public String getSessionId() {
 			return this.sessionId;
 		}
@@ -708,7 +689,7 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 							MAX_TIME_TO_CONNECTED_FRAME + " ms.", null);
 				}
 			}, MAX_TIME_TO_CONNECTED_FRAME);
-			connection.sendAsync(MessageBuilder.createMessage(EMPTY_PAYLOAD, this.connectHeaders.getMessageHeaders()));
+			connection.send(MessageBuilder.createMessage(EMPTY_PAYLOAD, this.connectHeaders.getMessageHeaders()));
 		}
 
 		@Override
@@ -882,7 +863,7 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 		 * @return a future to wait for the result
 		 */
 		@SuppressWarnings("unchecked")
-		public CompletableFuture<Void> forward(final Message<?> message, final StompHeaderAccessor accessor) {
+		public ListenableFuture<Void> forward(final Message<?> message, final StompHeaderAccessor accessor) {
 			TcpConnection<byte[]> conn = this.tcpConnection;
 
 			if (!this.isStompConnected || conn == null) {
@@ -918,17 +899,19 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 				logger.trace("Forwarding " + accessor.getDetailedLogMessage(message.getPayload()));
 			}
 
-			CompletableFuture<Void> future = conn.sendAsync((Message<byte[]>) messageToSend);
-			future.whenComplete((unused, throwable) -> {
-				if (throwable == null) {
+			ListenableFuture<Void> future = conn.send((Message<byte[]>) messageToSend);
+			future.addCallback(new ListenableFutureCallback<Void>() {
+				@Override
+				public void onSuccess(@Nullable Void result) {
 					if (accessor.getCommand() == StompCommand.DISCONNECT) {
 						afterDisconnectSent(accessor);
 					}
 				}
-				else {
-					if (this.tcpConnection != null) {
+				@Override
+				public void onFailure(Throwable ex) {
+					if (tcpConnection != null) {
 						handleTcpConnectionFailure("failed to forward " +
-								accessor.getShortLogMessage(message.getPayload()), throwable);
+								accessor.getShortLogMessage(message.getPayload()), ex);
 					}
 					else if (logger.isErrorEnabled()) {
 						logger.error("Failed to forward " + accessor.getShortLogMessage(message.getPayload()));
@@ -1007,7 +990,6 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 			sendSystemSubscriptions();
 		}
 
-		@Override
 		protected void initHeartbeats(StompHeaderAccessor connectedHeaders) {
 			TcpConnection<byte[]> con = getTcpConnection();
 			Assert.state(con != null, "No TcpConnection available");
@@ -1020,11 +1002,10 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 			if (clientSendInterval > 0 && serverReceiveInterval > 0) {
 				long interval = Math.max(clientSendInterval, serverReceiveInterval);
 				con.onWriteInactivity(() ->
-						con.sendAsync(HEARTBEAT_MESSAGE).whenComplete((unused, ex) -> {
-							if (ex != null) {
-								handleTcpConnectionFailure("Failed to forward heartbeat: " + ex.getMessage(), ex);
-							}
-						}), interval);
+						con.send(HEARTBEAT_MESSAGE).addCallback(
+								result -> {},
+								ex -> handleTcpConnectionFailure(
+										"Failed to forward heartbeat: " + ex.getMessage(), ex)), interval);
 			}
 			if (clientReceiveInterval > 0 && serverSendInterval > 0) {
 				final long interval = Math.max(clientReceiveInterval, serverSendInterval) * HEARTBEAT_MULTIPLIER;
@@ -1045,11 +1026,12 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 				TcpConnection<byte[]> conn = getTcpConnection();
 				if (conn != null) {
 					MessageHeaders headers = accessor.getMessageHeaders();
-					conn.sendAsync(MessageBuilder.createMessage(EMPTY_PAYLOAD, headers)).whenComplete((unused, ex) -> {
-						if (ex != null) {
-							handleTcpConnectionFailure("Failed to subscribe in \"system\" session.", ex);
-						}
-					});
+					conn.send(MessageBuilder.createMessage(EMPTY_PAYLOAD, headers)).addCallback(
+							result -> {},
+							ex -> {
+								String error = "Failed to subscribe in \"system\" session.";
+								handleTcpConnectionFailure(error, ex);
+							});
 				}
 			}
 		}
@@ -1098,9 +1080,9 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 		}
 
 		@Override
-		public CompletableFuture<Void> forward(Message<?> message, StompHeaderAccessor accessor) {
+		public ListenableFuture<Void> forward(Message<?> message, StompHeaderAccessor accessor) {
 			try {
-				CompletableFuture<Void> future = super.forward(message, accessor);
+				ListenableFuture<Void> future = super.forward(message, accessor);
 				if (message.getHeaders().get(SimpMessageHeaderAccessor.IGNORE_ERROR) == null) {
 					future.get();
 				}
@@ -1126,6 +1108,16 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 			for (RelayConnectionHandler handler : connectionHandlers.values()) {
 				handler.updateClientSendMessageCount(now);
 			}
+		}
+	}
+
+
+
+	private static class VoidCallable implements Callable<Void> {
+
+		@Override
+		public Void call() {
+			return null;
 		}
 	}
 

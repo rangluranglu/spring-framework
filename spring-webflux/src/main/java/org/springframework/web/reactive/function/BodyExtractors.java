@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -136,9 +137,6 @@ public abstract class BodyExtractors {
 
 	/**
 	 * Extractor to read multipart data into a {@code MultiValueMap<String, Part>}.
-	 * <p><strong>Note:</strong> that resources used for part handling,
-	 * like storage for the uploaded files, is not deleted automatically, but
-	 * should be done via {@link Part#delete()}.
 	 * @return {@code BodyExtractor} for multipart data
 	 */
 	// Parameterized for server-side use
@@ -153,9 +151,6 @@ public abstract class BodyExtractors {
 
 	/**
 	 * Extractor to read multipart data into {@code Flux<Part>}.
-	 * <p><strong>Note:</strong> that resources used for part handling,
-	 * like storage for the uploaded files, is not deleted automatically, but
-	 * should be done via {@link Part#delete()}.
 	 * @return {@code BodyExtractor} for multipart request parts
 	 */
 	// Parameterized for server-side use
@@ -202,7 +197,7 @@ public abstract class BodyExtractors {
 				.orElseGet(() -> {
 					List<MediaType> mediaTypes = context.messageReaders().stream()
 							.flatMap(reader -> reader.getReadableMediaTypes(elementType).stream())
-							.toList();
+							.collect(Collectors.toList());
 					return errorFunction.apply(
 							new UnsupportedMediaTypeException(contentType, mediaTypes, elementType));
 				});

@@ -38,7 +38,6 @@ import com.fasterxml.jackson.databind.ser.FilterProvider;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.context.ContextView;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
@@ -61,7 +60,7 @@ import org.springframework.util.MimeType;
 /**
  * Base class providing support methods for Jackson 2.9 encoding. For non-streaming use
  * cases, {@link Flux} elements are collected into a {@link List} before serialization for
- * performance reasons.
+ * performance reason.
  *
  * @author Sebastien Deleuze
  * @author Arjen Poutsma
@@ -70,8 +69,6 @@ import org.springframework.util.MimeType;
 public abstract class AbstractJackson2Encoder extends Jackson2CodecSupport implements HttpMessageEncoder<Object> {
 
 	private static final byte[] NEWLINE_SEPARATOR = {'\n'};
-
-	private static final byte[] EMPTY_BYTES = new byte[0];
 
 	private static final Map<String, JsonEncoding> ENCODINGS;
 
@@ -148,75 +145,51 @@ public abstract class AbstractJackson2Encoder extends Jackson2CodecSupport imple
 		Assert.notNull(bufferFactory, "'bufferFactory' must not be null");
 		Assert.notNull(elementType, "'elementType' must not be null");
 
-		return Flux.deferContextual(contextView -> {
+		if (inputStream instanceof Mono) {
+			return Mono.from(inputStream)
+					.map(value -> encodeValue(value, bufferFactory, elementType, mimeType, hints))
+					.flux();
+		}
+		else {
+			byte[] separator = getStreamingMediaTypeSeparator(mimeType);
+			if (separator != null) { // streaming
+				try {
+					ObjectMapper mapper = selectObjectMapper(elementType, mimeType);
+					if (mapper == null) {
+						throw new IllegalStateException("No ObjectMapper for " + elementType);
+					}
+					ObjectWriter writer = createObjectWriter(mapper, elementType, mimeType, null, hints);
+					ByteArrayBuilder byteBuilder = new ByteArrayBuilder(writer.getFactory()._getBufferRecycler());
+					JsonEncoding encoding = getJsonEncoding(mimeType);
+					JsonGenerator generator = mapper.getFactory().createGenerator(byteBuilder, encoding);
+					SequenceWriter sequenceWriter = writer.writeValues(generator);
 
-			Map<String, Object> hintsToUse = contextView.isEmpty() ? hints :
-					Hints.merge(hints, ContextView.class.getName(), contextView);
-
-			if (inputStream instanceof Mono) {
-				return Mono.from(inputStream)
-						.map(value -> encodeValue(value, bufferFactory, elementType, mimeType, hintsToUse))
+					return Flux.from(inputStream)
+							.map(value -> encodeStreamingValue(value, bufferFactory, hints, sequenceWriter, byteBuilder,
+									separator))
+							.doAfterTerminate(() -> {
+								try {
+									byteBuilder.release();
+									generator.close();
+								}
+								catch (IOException ex) {
+									logger.error("Could not close Encoder resources", ex);
+								}
+							});
+				}
+				catch (IOException ex) {
+					return Flux.error(ex);
+				}
+			}
+			else { // non-streaming
+				ResolvableType listType = ResolvableType.forClassWithGenerics(List.class, elementType);
+				return Flux.from(inputStream)
+						.collectList()
+						.map(list -> encodeValue(list, bufferFactory, listType, mimeType, hints))
 						.flux();
 			}
 
-			try {
-				ObjectMapper mapper = selectObjectMapper(elementType, mimeType);
-				if (mapper == null) {
-					throw new IllegalStateException("No ObjectMapper for " + elementType);
-				}
-
-				ObjectWriter writer = createObjectWriter(mapper, elementType, mimeType, null, hintsToUse);
-				ByteArrayBuilder byteBuilder = new ByteArrayBuilder(writer.getFactory()._getBufferRecycler());
-				JsonEncoding encoding = getJsonEncoding(mimeType);
-				JsonGenerator generator = mapper.getFactory().createGenerator(byteBuilder, encoding);
-				SequenceWriter sequenceWriter = writer.writeValues(generator);
-
-				byte[] separator = getStreamingMediaTypeSeparator(mimeType);
-				Flux<DataBuffer> dataBufferFlux;
-
-				if (separator != null) {
-					dataBufferFlux = Flux.from(inputStream).map(value -> encodeStreamingValue(
-							value, bufferFactory, hintsToUse, sequenceWriter, byteBuilder, EMPTY_BYTES, separator));
-				}
-				else {
-					JsonArrayJoinHelper helper = new JsonArrayJoinHelper();
-
-					// Do not prepend JSON array prefix until first signal is known, onNext vs onError
-					// Keeps response not committed for error handling
-
-					dataBufferFlux = Flux.from(inputStream)
-							.map(value -> {
-								byte[] prefix = helper.getPrefix();
-								byte[] delimiter = helper.getDelimiter();
-
-								DataBuffer dataBuffer = encodeStreamingValue(
-										value, bufferFactory, hintsToUse, sequenceWriter, byteBuilder,
-										delimiter, EMPTY_BYTES);
-
-								return (prefix.length > 0 ?
-										bufferFactory.join(List.of(bufferFactory.wrap(prefix), dataBuffer)) :
-										dataBuffer);
-							})
-							.switchIfEmpty(Mono.fromCallable(() -> bufferFactory.wrap(helper.getPrefix())))
-							.concatWith(Mono.fromCallable(() -> bufferFactory.wrap(helper.getSuffix())));
-				}
-
-				return dataBufferFlux
-						.doOnNext(dataBuffer ->	Hints.touchDataBuffer(dataBuffer, hintsToUse, logger))
-						.doAfterTerminate(() -> {
-							try {
-								byteBuilder.release();
-								generator.close();
-							}
-							catch (IOException ex) {
-								logger.error("Could not close Encoder resources", ex);
-							}
-						});
-			}
-			catch (IOException ex) {
-				return Flux.error(ex);
-			}
-		});
+		}
 	}
 
 	@Override
@@ -225,11 +198,12 @@ public abstract class AbstractJackson2Encoder extends Jackson2CodecSupport imple
 
 		Class<?> jsonView = null;
 		FilterProvider filters = null;
-		if (value instanceof MappingJacksonValue mappingJacksonValue) {
-			value = mappingJacksonValue.getValue();
+		if (value instanceof MappingJacksonValue) {
+			MappingJacksonValue container = (MappingJacksonValue) value;
+			value = container.getValue();
 			valueType = ResolvableType.forInstance(value);
-			jsonView = mappingJacksonValue.getSerializationView();
-			filters = mappingJacksonValue.getFilters();
+			jsonView = container.getSerializationView();
+			filters = container.getFilters();
 		}
 
 		ObjectMapper mapper = selectObjectMapper(valueType, mimeType);
@@ -274,10 +248,8 @@ public abstract class AbstractJackson2Encoder extends Jackson2CodecSupport imple
 		}
 	}
 
-	private DataBuffer encodeStreamingValue(
-			Object value, DataBufferFactory bufferFactory, @Nullable Map<String, Object> hints,
-			SequenceWriter sequenceWriter, ByteArrayBuilder byteArrayBuilder,
-			byte[] prefix, byte[] suffix) {
+	private DataBuffer encodeStreamingValue(Object value, DataBufferFactory bufferFactory, @Nullable Map<String, Object> hints,
+			SequenceWriter sequenceWriter, ByteArrayBuilder byteArrayBuilder, byte[] separator) {
 
 		logValue(hints, value);
 
@@ -309,14 +281,9 @@ public abstract class AbstractJackson2Encoder extends Jackson2CodecSupport imple
 			offset = 0;
 			length = bytes.length;
 		}
-		DataBuffer buffer = bufferFactory.allocateBuffer(length + prefix.length + suffix.length);
-		if (prefix.length != 0) {
-			buffer.write(prefix);
-		}
+		DataBuffer buffer = bufferFactory.allocateBuffer(length + separator.length);
 		buffer.write(bytes, offset, length);
-		if (suffix.length != 0) {
-			buffer.write(suffix);
-		}
+		buffer.write(separator);
 		Hints.touchDataBuffer(buffer, hints, logger);
 
 		return buffer;
@@ -346,17 +313,6 @@ public abstract class AbstractJackson2Encoder extends Jackson2CodecSupport imple
 		return customizeWriter(writer, mimeType, valueType, hints);
 	}
 
-	/**
-	 * Subclasses can use this method to customize the {@link ObjectWriter} used
-	 * for writing values.
-	 * @param writer the writer instance to customize
-	 * @param mimeType the selected MIME type
-	 * @param elementType the type of element values to write
-	 * @param hints a map with serialization hints; the Reactor Context, when
-	 * available, may be accessed under the key
-	 * {@code ContextView.class.getName()}
-	 * @return the customized {@code ObjectWriter} to use
-	 */
 	protected ObjectWriter customizeWriter(ObjectWriter writer, @Nullable MimeType mimeType,
 			ResolvableType elementType, @Nullable Map<String, Object> hints) {
 
@@ -428,34 +384,6 @@ public abstract class AbstractJackson2Encoder extends Jackson2CodecSupport imple
 	@Override
 	protected <A extends Annotation> A getAnnotation(MethodParameter parameter, Class<A> annotType) {
 		return parameter.getMethodAnnotation(annotType);
-	}
-
-
-	private static class JsonArrayJoinHelper {
-
-		private static final byte[] COMMA_SEPARATOR = {','};
-
-		private static final byte[] OPEN_BRACKET = {'['};
-
-		private static final byte[] CLOSE_BRACKET = {']'};
-
-		private boolean firstItemEmitted;
-
-		public byte[] getDelimiter() {
-			if (this.firstItemEmitted) {
-				return COMMA_SEPARATOR;
-			}
-			this.firstItemEmitted = true;
-			return EMPTY_BYTES;
-		}
-
-		public byte[] getPrefix() {
-			return (this.firstItemEmitted ? EMPTY_BYTES : OPEN_BRACKET);
-		}
-
-		public byte[] getSuffix() {
-			return CLOSE_BRACKET;
-		}
 	}
 
 }

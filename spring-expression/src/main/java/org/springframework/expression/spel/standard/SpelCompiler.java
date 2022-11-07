@@ -274,7 +274,7 @@ public final class SpelCompiler implements Opcodes {
 
 		private static final URL[] NO_URLS = new URL[0];
 
-		private final AtomicInteger classesDefinedCount = new AtomicInteger();
+		private final AtomicInteger classesDefinedCount = new AtomicInteger(0);
 
 		public ChildClassLoader(@Nullable ClassLoader classLoader) {
 			super(NO_URLS, classLoader);

@@ -18,21 +18,18 @@ package org.springframework.test.web.client.response;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.lang.Nullable;
 import org.springframework.mock.http.client.MockClientHttpResponse;
 import org.springframework.test.web.client.ResponseCreator;
 import org.springframework.util.Assert;
-import org.springframework.util.MultiValueMap;
 
 /**
  * A {@code ResponseCreator} with builder-style methods for adding response details.
@@ -42,7 +39,7 @@ import org.springframework.util.MultiValueMap;
  */
 public class DefaultResponseCreator implements ResponseCreator {
 
-	private final HttpStatusCode statusCode;
+	private final int statusCode;
 
 	private byte[] content = new byte[0];
 
@@ -55,35 +52,27 @@ public class DefaultResponseCreator implements ResponseCreator {
 	/**
 	 * Protected constructor.
 	 * Use static factory methods in {@link MockRestResponseCreators}.
-	 * @since 5.3.17
 	 */
-	protected DefaultResponseCreator(int statusCode) {
-		this(HttpStatusCode.valueOf(statusCode));
+	protected DefaultResponseCreator(HttpStatus statusCode) {
+		Assert.notNull(statusCode, "HttpStatus must not be null");
+		this.statusCode = statusCode.value();
 	}
 
 	/**
 	 * Protected constructor.
 	 * Use static factory methods in {@link MockRestResponseCreators}.
+	 * @since 5.3.17
 	 */
-	protected DefaultResponseCreator(HttpStatusCode statusCode) {
-		Assert.notNull(statusCode, "HttpStatusCode must not be null");
+	protected DefaultResponseCreator(int statusCode) {
 		this.statusCode = statusCode;
 	}
+
 
 	/**
 	 * Set the body as a UTF-8 String.
 	 */
 	public DefaultResponseCreator body(String content) {
 		this.content = content.getBytes(StandardCharsets.UTF_8);
-		return this;
-	}
-
-	/**
-	 * Set the body from a string using the given character set.
-	 * @since 6.0
-	 */
-	public DefaultResponseCreator body(String content, Charset charset) {
-		this.content = content.getBytes(charset);
 		return this;
 	}
 
@@ -96,7 +85,7 @@ public class DefaultResponseCreator implements ResponseCreator {
 	}
 
 	/**
-	 * Set the body from a {@link Resource}.
+	 * Set the body as a {@link Resource}.
 	 */
 	public DefaultResponseCreator body(Resource resource) {
 		this.contentResource = resource;
@@ -120,17 +109,6 @@ public class DefaultResponseCreator implements ResponseCreator {
 	}
 
 	/**
-	 * Add a response header with one or more values.
-	 * @since 6.0
-	 */
-	public DefaultResponseCreator header(String name, String ... headerValues) {
-		for (String headerValue : headerValues) {
-			this.headers.add(name, headerValue);
-		}
-		return this;
-	}
-
-	/**
 	 * Copy all given headers.
 	 */
 	public DefaultResponseCreator headers(HttpHeaders headers) {
@@ -138,25 +116,6 @@ public class DefaultResponseCreator implements ResponseCreator {
 		return this;
 	}
 
-	/**
-	 * Add one or more cookies.
-	 * @since 6.0
-	 */
-	public DefaultResponseCreator cookies(ResponseCookie... cookies) {
-		for (ResponseCookie cookie : cookies) {
-			this.headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
-		}
-		return this;
-	}
-
-	/**
-	 * Copy all cookies from the given {@link MultiValueMap}.
-	 * @since 6.0
-	 */
-	public DefaultResponseCreator cookies(MultiValueMap<String, ResponseCookie> multiValueMap) {
-		multiValueMap.values().forEach(cookies -> cookies.forEach(this::cookies));
-		return this;
-	}
 
 	@Override
 	public ClientHttpResponse createResponse(@Nullable ClientHttpRequest request) throws IOException {

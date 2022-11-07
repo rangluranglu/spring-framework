@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,6 @@ import org.springframework.util.StringUtils;
  *
  * @author Thomas Risberg
  * @author Juergen Hoeller
- * @author Ben Blinebury
  */
 public abstract class JdbcUtils {
 
@@ -286,10 +285,12 @@ public abstract class JdbcUtils {
 		if (obj != null) {
 			className = obj.getClass().getName();
 		}
-		if (obj instanceof Blob blob) {
+		if (obj instanceof Blob) {
+			Blob blob = (Blob) obj;
 			obj = blob.getBytes(1, (int) blob.length());
 		}
-		else if (obj instanceof Clob clob) {
+		else if (obj instanceof Clob) {
+			Clob clob = (Clob) obj;
 			obj = clob.getSubString(1, (int) clob.length());
 		}
 		else if ("oracle.sql.TIMESTAMP".equals(className) || "oracle.sql.TIMESTAMPTZ".equals(className)) {
@@ -455,6 +456,9 @@ public abstract class JdbcUtils {
 		String name = source;
 		if (source != null && source.startsWith("DB2")) {
 			name = "DB2";
+		}
+		else if ("MariaDB".equals(source)) {
+			name = "MySQL";
 		}
 		else if ("Sybase SQL Server".equals(source) ||
 				"Adaptive Server Enterprise".equals(source) ||

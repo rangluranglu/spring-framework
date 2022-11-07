@@ -33,7 +33,6 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StreamUtils;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
 
@@ -51,9 +50,6 @@ public final class ContentDisposition {
 
 	private final static Pattern BASE64_ENCODED_PATTERN =
 			Pattern.compile("=\\?([0-9a-zA-Z-_]+)\\?B\\?([+/0-9a-zA-Z]+=*)\\?=");
-
-	private final static Pattern QUOTED_PRINTABLE_ENCODED_PATTERN =
-			Pattern.compile("=\\?([0-9a-zA-Z-_]+)\\?Q\\?([!->@-~]+)\\?="); // Printable ASCII other than "?" or SPACE
 
 	private static final String INVALID_HEADER_FIELD_PARAMETER_FORMAT =
 			"Invalid header field parameter format (as defined in RFC 5987)";
@@ -216,9 +212,10 @@ public final class ContentDisposition {
 		if (this == other) {
 			return true;
 		}
-		if (!(other instanceof ContentDisposition otherCd)) {
+		if (!(other instanceof ContentDisposition)) {
 			return false;
 		}
+		ContentDisposition otherCd = (ContentDisposition) other;
 		return (ObjectUtils.nullSafeEquals(this.type, otherCd.type) &&
 				ObjectUtils.nullSafeEquals(this.name, otherCd.name) &&
 				ObjectUtils.nullSafeEquals(this.filename, otherCd.filename) &&
@@ -259,7 +256,7 @@ public final class ContentDisposition {
 		if (this.filename != null) {
 			if (this.charset == null || StandardCharsets.US_ASCII.equals(this.charset)) {
 				sb.append("; filename=\"");
-				sb.append(encodeQuotedPairs(this.filename)).append('\"');
+				sb.append(escapeQuotationsInFilename(this.filename)).append('\"');
 			}
 			else {
 				sb.append("; filename*=");
@@ -375,37 +372,13 @@ public final class ContentDisposition {
 					if (value.startsWith("=?") ) {
 						Matcher matcher = BASE64_ENCODED_PATTERN.matcher(value);
 						if (matcher.find()) {
-							Base64.Decoder decoder = Base64.getDecoder();
-							StringBuilder builder = new StringBuilder();
-							do {
-								charset = Charset.forName(matcher.group(1));
-								byte[] decoded = decoder.decode(matcher.group(2));
-								builder.append(new String(decoded, charset));
-							}
-							while (matcher.find());
-
-							filename = builder.toString();
+							String match1 = matcher.group(1);
+							String match2 = matcher.group(2);
+							filename = new String(Base64.getDecoder().decode(match2), Charset.forName(match1));
 						}
 						else {
-							matcher = QUOTED_PRINTABLE_ENCODED_PATTERN.matcher(value);
-							if (matcher.find()) {
-								StringBuilder builder = new StringBuilder();
-								do {
-									charset = Charset.forName(matcher.group(1));
-									String decoded = decodeQuotedPrintableFilename(matcher.group(2), charset);
-									builder.append(decoded);
-								}
-								while (matcher.find());
-
-								filename = builder.toString();
-							}
-							else {
-								filename = value;
-							}
+							filename = value;
 						}
-					}
-					else if (value.indexOf('\\') != -1) {
-						filename = decodeQuotedPairs(value);
 					}
 					else {
 						filename = value;
@@ -492,7 +465,7 @@ public final class ContentDisposition {
 	 * @see <a href="https://tools.ietf.org/html/rfc5987">RFC 5987</a>
 	 */
 	private static String decodeFilename(String filename, Charset charset) {
-		Assert.notNull(filename, "'input' String` should not be null");
+		Assert.notNull(filename, "'input' String should not be null");
 		Assert.notNull(charset, "'charset' should not be null");
 		byte[] value = filename.getBytes(charset);
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -526,70 +499,25 @@ public final class ContentDisposition {
 				c == '.' || c == '^' || c == '_' || c == '`' || c == '|' || c == '~';
 	}
 
-	/**
-	 * Decode the given header field param as described in RFC 2047.
-	 * @param filename the filename
-	 * @param charset the charset for the filename
-	 * @return the encoded header field param
-	 * @see <a href="https://tools.ietf.org/html/rfc2047">RFC 2047</a>
-	 */
-	private static String decodeQuotedPrintableFilename(String filename, Charset charset) {
-		Assert.notNull(filename, "'input' String` should not be null");
-		Assert.notNull(charset, "'charset' should not be null");
-
-		byte[] value = filename.getBytes(US_ASCII);
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		int index = 0;
-		while (index < value.length) {
-			byte b = value[index];
-			if (b == '_') {
-				baos.write(' ');
-				index++;
-			}
-			else if (b == '=' && index < value.length - 2) {
-				int i1 = Character.digit((char) value[index + 1], 16);
-				int i2 = Character.digit((char) value[index + 2], 16);
-				if (i1 == -1 || i2 == -1) {
-					throw new IllegalArgumentException("Not a valid hex sequence: " + filename.substring(index));
-				}
-				baos.write((i1 << 4) | i2);
-				index += 3;
-			}
-			else {
-				baos.write(b);
-				index++;
-			}
-		}
-		return StreamUtils.copyToString(baos, charset);
-	}
-
-	private static String encodeQuotedPairs(String filename) {
+	private static String escapeQuotationsInFilename(String filename) {
 		if (filename.indexOf('"') == -1 && filename.indexOf('\\') == -1) {
 			return filename;
 		}
+		boolean escaped = false;
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < filename.length() ; i++) {
 			char c = filename.charAt(i);
-			if (c == '"' || c == '\\') {
-				sb.append('\\');
-			}
-			sb.append(c);
-		}
-		return sb.toString();
-	}
-
-	private static String decodeQuotedPairs(String filename) {
-		StringBuilder sb = new StringBuilder();
-		int length = filename.length();
-		for (int i = 0; i < length; i++) {
-			char c = filename.charAt(i);
-			if (filename.charAt(i) == '\\' && i + 1 < length) {
-				i++;
-				sb.append(filename.charAt(i));
+			if (!escaped && c == '"') {
+				sb.append("\\\"");
 			}
 			else {
 				sb.append(c);
 			}
+			escaped = (!escaped && c == '\\');
+		}
+		// Remove backslash at the end.
+		if (escaped) {
+			sb.deleteCharAt(sb.length() - 1);
 		}
 		return sb.toString();
 	}
@@ -603,10 +531,10 @@ public final class ContentDisposition {
 	 * @see <a href="https://tools.ietf.org/html/rfc5987">RFC 5987</a>
 	 */
 	private static String encodeFilename(String input, Charset charset) {
-		Assert.notNull(input, "`input` is required");
-		Assert.notNull(charset, "`charset` is required");
+		Assert.notNull(input, "'input' is required");
+		Assert.notNull(charset, "'charset' is required");
 		Assert.isTrue(!StandardCharsets.US_ASCII.equals(charset), "ASCII does not require encoding");
-		Assert.isTrue(UTF_8.equals(charset) || ISO_8859_1.equals(charset), "Only UTF-8 and ISO-8859-1 supported.");
+		Assert.isTrue(UTF_8.equals(charset) || ISO_8859_1.equals(charset), "Only UTF-8 and ISO-8859-1 are supported");
 		byte[] source = input.getBytes(charset);
 		int len = source.length;
 		StringBuilder sb = new StringBuilder(len << 1);

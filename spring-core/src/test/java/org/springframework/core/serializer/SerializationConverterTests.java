@@ -71,7 +71,7 @@ class SerializationConverterTests {
 
 		private static final long serialVersionUID = 1L;
 
-		@SuppressWarnings({"unused", "serial"})
+		@SuppressWarnings("unused")
 		private Object object;
 	}
 

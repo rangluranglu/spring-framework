@@ -17,7 +17,6 @@
 package org.springframework.web.reactive.result.method.annotation
 
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -40,6 +39,7 @@ import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.UndertowHttpServer
 import reactor.core.publisher.Flux
+import java.time.Duration
 
 class CoroutinesIntegrationTests : AbstractRequestMappingIntegrationTests() {
 
@@ -122,7 +122,7 @@ class CoroutinesIntegrationTests : AbstractRequestMappingIntegrationTests() {
 
 		val entity = performGet<String>("/entity-flux", HttpHeaders.EMPTY, String::class.java)
 		assertThat(entity.statusCode).isEqualTo(HttpStatus.OK)
-		assertThat(entity.body).isEqualTo("foobar")
+		assertThat(entity.body).isEqualTo("01234")
 	}
 
 	@ParameterizedHttpServerTest
@@ -140,7 +140,6 @@ class CoroutinesIntegrationTests : AbstractRequestMappingIntegrationTests() {
 	@ComponentScan(resourcePattern = "**/CoroutinesIntegrationTests*")
 	open class WebConfig
 
-	@OptIn(DelicateCoroutinesApi::class)
 	@RestController
 	class CoroutinesController {
 
@@ -195,7 +194,8 @@ class CoroutinesIntegrationTests : AbstractRequestMappingIntegrationTests() {
 
 		@GetMapping("/entity-flux")
 		suspend fun entityFlux() : ResponseEntity<Flux<String>> {
-			val strings = Flux.just("foo", "bar");
+			val strings = Flux.interval(Duration.ofMillis(100)).take(5)
+					.map { l -> l.toString() }
 			delay(1)
 			return ResponseEntity.ok().body(strings)
 		}

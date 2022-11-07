@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -246,6 +247,27 @@ public class AutowiredAnnotationBeanPostProcessorTests {
 		assertThat(bean.getBeanFactory()).isNull();
 		assertThat(bean.baseInjected).isTrue();
 		assertThat(bean.subInjected).isTrue();
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void testExtendedResourceInjectionWithAtRequired() {
+		bf.addBeanPostProcessor(new RequiredAnnotationBeanPostProcessor());
+		RootBeanDefinition bd = new RootBeanDefinition(TypedExtendedResourceInjectionBean.class);
+		bd.setScope(BeanDefinition.SCOPE_PROTOTYPE);
+		bf.registerBeanDefinition("annotatedBean", bd);
+		TestBean tb = new TestBean();
+		bf.registerSingleton("testBean", tb);
+		NestedTestBean ntb = new NestedTestBean();
+		bf.registerSingleton("nestedTestBean", ntb);
+
+		TypedExtendedResourceInjectionBean bean = (TypedExtendedResourceInjectionBean) bf.getBean("annotatedBean");
+		assertThat(bean.getTestBean()).isSameAs(tb);
+		assertThat(bean.getTestBean2()).isSameAs(tb);
+		assertThat(bean.getTestBean3()).isSameAs(tb);
+		assertThat(bean.getTestBean4()).isSameAs(tb);
+		assertThat(bean.getNestedTestBean()).isSameAs(ntb);
+		assertThat(bean.getBeanFactory()).isSameAs(bf);
 	}
 
 	@Test
@@ -2378,6 +2400,7 @@ public class AutowiredAnnotationBeanPostProcessorTests {
 
 		@Override
 		@Autowired
+		@Required
 		@SuppressWarnings("deprecation")
 		public void setTestBean2(TestBean testBean2) {
 			super.setTestBean2(testBean2);
@@ -3015,11 +3038,11 @@ public class AutowiredAnnotationBeanPostProcessorTests {
 		}
 
 		public List<TestBean> streamTestBeans() {
-			return this.testBeanProvider.stream().toList();
+			return this.testBeanProvider.stream().collect(Collectors.toList());
 		}
 
 		public List<TestBean> sortedTestBeans() {
-			return this.testBeanProvider.orderedStream().toList();
+			return this.testBeanProvider.orderedStream().collect(Collectors.toList());
 		}
 	}
 

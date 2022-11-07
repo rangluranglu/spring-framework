@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.lang.reflect.Proxy;
 
 import org.springframework.aop.SpringProxy;
+import org.springframework.core.NativeDetector;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -53,7 +54,8 @@ public class DefaultAopProxyFactory implements AopProxyFactory, Serializable {
 
 	@Override
 	public AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException {
-		if (config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config)) {
+		if (!NativeDetector.inNativeImage() &&
+				(config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config))) {
 			Class<?> targetClass = config.getTargetClass();
 			if (targetClass == null) {
 				throw new AopConfigException("TargetSource cannot determine target class: " +

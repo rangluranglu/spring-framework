@@ -50,6 +50,7 @@ import static org.mockito.Mockito.mock;
  * @author Juergen Hoeller
  * @author Arjen Poutsma
  */
+@Deprecated
 class PathResourceTests {
 
 	private static final String TEST_DIR =
@@ -69,19 +70,22 @@ class PathResourceTests {
 
 	@Test
 	void nullPath() {
-		assertThatIllegalArgumentException().isThrownBy(() -> new PathResource((Path) null))
+		assertThatIllegalArgumentException().isThrownBy(() ->
+				new PathResource((Path) null))
 			.withMessageContaining("Path must not be null");
 	}
 
 	@Test
 	void nullPathString() {
-		assertThatIllegalArgumentException().isThrownBy(() -> new PathResource((String) null))
+		assertThatIllegalArgumentException().isThrownBy(() ->
+				new PathResource((String) null))
 			.withMessageContaining("Path must not be null");
 	}
 
 	@Test
 	void nullUri() {
-		assertThatIllegalArgumentException().isThrownBy(() -> new PathResource((URI) null))
+		assertThatIllegalArgumentException().isThrownBy(() ->
+				new PathResource((URI) null))
 			.withMessageContaining("URI must not be null");
 	}
 
@@ -163,13 +167,15 @@ class PathResourceTests {
 	@Test
 	void getInputStreamForDir() throws IOException {
 		PathResource resource = new PathResource(TEST_DIR);
-		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(resource::getInputStream);
+		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(
+				resource::getInputStream);
 	}
 
 	@Test
 	void getInputStreamDoesNotExist() throws IOException {
 		PathResource resource = new PathResource(NON_EXISTING_FILE);
-		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(resource::getInputStream);
+		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(
+				resource::getInputStream);
 	}
 
 	@Test
@@ -197,7 +203,8 @@ class PathResourceTests {
 		given(path.normalize()).willReturn(path);
 		given(path.toFile()).willThrow(new UnsupportedOperationException());
 		PathResource resource = new PathResource(path);
-		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(resource::getFile);
+		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(
+				resource::getFile);
 	}
 
 	@Test
@@ -277,7 +284,8 @@ class PathResourceTests {
 	@Test
 	void directoryOutputStream() throws IOException {
 		PathResource resource = new PathResource(TEST_DIR);
-		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(resource::getOutputStream);
+		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(
+				resource::getOutputStream);
 	}
 
 	@Test
@@ -305,7 +313,8 @@ class PathResourceTests {
 	@Test
 	void getReadableByteChannelDoesNotExist() throws IOException {
 		PathResource resource = new PathResource(NON_EXISTING_FILE);
-		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(resource::readableChannel);
+		assertThatExceptionOfType(FileNotFoundException.class).isThrownBy(
+				resource::readableChannel);
 	}
 
 	@Test

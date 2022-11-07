@@ -30,7 +30,6 @@ import org.springframework.http.server.PathContainer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-import org.springframework.web.filter.reactive.ServerHttpObservationFilter;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.pattern.PathPattern;
 
@@ -154,7 +153,8 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping {
 		Object handler = this.handlerMap.get(pattern);
 
 		// Bean name or resolved handler?
-		if (handler instanceof String handlerName) {
+		if (handler instanceof String) {
+			String handlerName = (String) handler;
 			handler = obtainApplicationContext().getBean(handlerName);
 		}
 
@@ -166,8 +166,6 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping {
 
 		exchange.getAttributes().put(BEST_MATCHING_HANDLER_ATTRIBUTE, handler);
 		exchange.getAttributes().put(BEST_MATCHING_PATTERN_ATTRIBUTE, pattern);
-		ServerHttpObservationFilter.findObservationContext(exchange)
-				.ifPresent(context -> context.setPathPattern(pattern));
 		exchange.getAttributes().put(PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE, pathWithinMapping);
 		exchange.getAttributes().put(URI_TEMPLATE_VARIABLES_ATTRIBUTE, matchInfo.getUriVariables());
 
@@ -225,7 +223,8 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping {
 		}
 
 		// Eagerly resolve handler if referencing singleton via name.
-		if (!this.lazyInitHandlers && handler instanceof String handlerName) {
+		if (!this.lazyInitHandlers && handler instanceof String) {
+			String handlerName = (String) handler;
 			if (obtainApplicationContext().isSingleton(handlerName)) {
 				resolvedHandler = obtainApplicationContext().getBean(handlerName);
 			}

@@ -19,9 +19,9 @@ package org.springframework.web.servlet;
 import java.io.IOException;
 import java.util.Locale;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.MutablePropertyValues;
@@ -42,10 +42,10 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
  * @author Juergen Hoeller
  * @since 21.05.2003
  */
-@SuppressWarnings("deprecation")
 public class SimpleWebApplicationContext extends StaticWebApplicationContext {
 
 	@Override
+	@SuppressWarnings("deprecation")
 	public void refresh() throws BeansException {
 		registerSingleton("/locale.do", LocaleChecker.class);
 
@@ -67,6 +67,7 @@ public class SimpleWebApplicationContext extends StaticWebApplicationContext {
 	}
 
 
+	@SuppressWarnings("deprecation")
 	public static class LocaleChecker implements Controller, org.springframework.web.servlet.mvc.LastModified {
 
 		@Override

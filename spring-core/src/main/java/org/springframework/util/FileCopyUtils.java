@@ -108,10 +108,12 @@ public abstract class FileCopyUtils {
 		Assert.notNull(in, "No InputStream specified");
 		Assert.notNull(out, "No OutputStream specified");
 
-		try (in; out) {
-			int count = (int) in.transferTo(out);
-			out.flush();
-			return count;
+		try {
+			return StreamUtils.copy(in, out);
+		}
+		finally {
+			close(in);
+			close(out);
 		}
 	}
 

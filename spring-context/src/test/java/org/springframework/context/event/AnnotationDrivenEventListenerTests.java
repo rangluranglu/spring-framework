@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,8 +30,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.inject.Inject;
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
+import org.springframework.util.concurrent.SettableListenableFuture;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.validation.beanvalidation.MethodValidationPostProcessor;
 
@@ -266,11 +268,9 @@ class AnnotationDrivenEventListenerTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void listenableFutureReply() {
 		load(TestEventListener.class, ReplyEventListener.class);
-		org.springframework.util.concurrent.SettableListenableFuture<String> future =
-				new org.springframework.util.concurrent.SettableListenableFuture<>();
+		SettableListenableFuture<String> future = new SettableListenableFuture<>();
 		future.set("dummy");
 		AnotherTestEvent event = new AnotherTestEvent(this, future);
 		ReplyEventListener replyEventListener = this.context.getBean(ReplyEventListener.class);
@@ -775,7 +775,8 @@ class AnnotationDrivenEventListenerTests {
 			if (event.content == null) {
 				return null;
 			}
-			else if (event.content instanceof String s) {
+			else if (event.content instanceof String) {
+				String s = (String) event.content;
 				if (s.equals("String")) {
 					return event.content;
 				}

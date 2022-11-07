@@ -61,8 +61,14 @@ public class ServerHttpRequestDecorator implements ServerHttpRequest {
 	}
 
 	@Override
+	@Nullable
 	public HttpMethod getMethod() {
 		return getDelegate().getMethod();
+	}
+
+	@Override
+	public String getMethodValue() {
+		return getDelegate().getMethodValue();
 	}
 
 	@Override

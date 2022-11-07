@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -210,13 +210,9 @@ public class TransactionalTestExecutionListener extends AbstractTestExecutionLis
 			transactionAttribute = TestContextTransactionUtils.createDelegatingTransactionAttribute(testContext,
 				transactionAttribute);
 
-			if (logger.isTraceEnabled()) {
-				logger.trace("Explicit transaction definition [%s] found for test context %s"
-						.formatted(transactionAttribute, testContext));
-			}
-			else if (logger.isDebugEnabled()) {
-				logger.debug("Explicit transaction definition [%s] found for test class [%s] and test method [%s]"
-						.formatted(transactionAttribute, testClass.getName(), testMethod.getName()));
+			if (logger.isDebugEnabled()) {
+				logger.debug("Explicit transaction definition [" + transactionAttribute +
+						"] found for test context " + testContext);
 			}
 
 			if (transactionAttribute.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED ||
@@ -275,17 +271,11 @@ public class TransactionalTestExecutionListener extends AbstractTestExecutionLis
 	 */
 	protected void runBeforeTransactionMethods(TestContext testContext) throws Exception {
 		try {
-			Class<?> testClass = testContext.getTestClass();
-			List<Method> methods = getAnnotatedMethods(testClass, BeforeTransaction.class);
+			List<Method> methods = getAnnotatedMethods(testContext.getTestClass(), BeforeTransaction.class);
 			Collections.reverse(methods);
 			for (Method method : methods) {
-				if (logger.isTraceEnabled()) {
-					logger.trace("Executing @BeforeTransaction method [%s] for test context %s"
-							.formatted(method, testContext));
-				}
-				else if (logger.isDebugEnabled()) {
-					logger.debug("Executing @BeforeTransaction method [%s] for test class [%s]"
-							.formatted(method, testClass.getName()));
+				if (logger.isDebugEnabled()) {
+					logger.debug("Executing @BeforeTransaction method [" + method + "] for test context " + testContext);
 				}
 				ReflectionUtils.makeAccessible(method);
 				method.invoke(testContext.getTestInstance());
@@ -294,7 +284,7 @@ public class TransactionalTestExecutionListener extends AbstractTestExecutionLis
 		catch (InvocationTargetException ex) {
 			if (logger.isErrorEnabled()) {
 				logger.error("Exception encountered while executing @BeforeTransaction methods for test context " +
-						testContext, ex.getTargetException());
+						testContext + ".", ex.getTargetException());
 			}
 			ReflectionUtils.rethrowException(ex.getTargetException());
 		}
@@ -311,17 +301,11 @@ public class TransactionalTestExecutionListener extends AbstractTestExecutionLis
 	protected void runAfterTransactionMethods(TestContext testContext) throws Exception {
 		Throwable afterTransactionException = null;
 
-		Class<?> testClass = testContext.getTestClass();
-		List<Method> methods = getAnnotatedMethods(testClass, AfterTransaction.class);
+		List<Method> methods = getAnnotatedMethods(testContext.getTestClass(), AfterTransaction.class);
 		for (Method method : methods) {
 			try {
-				if (logger.isTraceEnabled()) {
-					logger.trace("Executing @AfterTransaction method [%s] for test context %s"
-							.formatted(method, testContext));
-				}
-				else if (logger.isDebugEnabled()) {
-					logger.debug("Executing @AfterTransaction method [%s] for test class [%s]"
-							.formatted(method, testClass.getName()));
+				if (logger.isDebugEnabled()) {
+					logger.debug("Executing @AfterTransaction method [" + method + "] for test context " + testContext);
 				}
 				ReflectionUtils.makeAccessible(method);
 				method.invoke(testContext.getTestInstance());
@@ -446,28 +430,22 @@ public class TransactionalTestExecutionListener extends AbstractTestExecutionLis
 	 */
 	protected final boolean isRollback(TestContext testContext) throws Exception {
 		boolean rollback = isDefaultRollback(testContext);
-		Method testMethod = testContext.getTestMethod();
-		Rollback rollbackAnnotation = AnnotatedElementUtils.findMergedAnnotation(testMethod, Rollback.class);
+		Rollback rollbackAnnotation =
+				AnnotatedElementUtils.findMergedAnnotation(testContext.getTestMethod(), Rollback.class);
 		if (rollbackAnnotation != null) {
 			boolean rollbackOverride = rollbackAnnotation.value();
-			if (logger.isTraceEnabled()) {
-				logger.trace("Method-level @Rollback(%s) overrides default rollback [%s] for test context %s"
-						.formatted(rollbackOverride, rollback, testContext));
-			}
-			else if (logger.isDebugEnabled()) {
-				logger.debug("Method-level @Rollback(%s) overrides default rollback [%s] for test method [%s]"
-						.formatted(rollbackOverride, rollback, testMethod));
+			if (logger.isDebugEnabled()) {
+				logger.debug(String.format(
+						"Method-level @Rollback(%s) overrides default rollback [%s] for test context %s.",
+						rollbackOverride, rollback, testContext));
 			}
 			rollback = rollbackOverride;
 		}
 		else {
-			if (logger.isTraceEnabled()) {
-				logger.trace("No method-level @Rollback override: using default rollback [%s] for test context %s"
-						.formatted(rollback, testContext));
-			}
-			else if (logger.isDebugEnabled()) {
-				logger.debug("No method-level @Rollback override: using default rollback [%s] for test method [%s]"
-						.formatted(rollback, testMethod));
+			if (logger.isDebugEnabled()) {
+				logger.debug(String.format(
+						"No method-level @Rollback override: using default rollback [%s] for test context %s.",
+						rollback, testContext));
 			}
 		}
 		return rollback;

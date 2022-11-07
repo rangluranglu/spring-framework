@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,6 +122,7 @@ public class XmlEventDecoder extends AbstractDecoder<XMLEvent> {
 
 
 	@Override
+	@SuppressWarnings({"rawtypes", "unchecked", "cast"})  // XMLEventReader is Iterator<Object> on JDK 9
 	public Flux<XMLEvent> decode(Publisher<DataBuffer> input, ResolvableType elementType,
 			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
 
@@ -136,7 +137,7 @@ public class XmlEventDecoder extends AbstractDecoder<XMLEvent> {
 					.flatMapIterable(buffer -> {
 						try {
 							InputStream is = buffer.asInputStream();
-							Iterator<Object> eventReader = inputFactory.createXMLEventReader(is);
+							Iterator eventReader = inputFactory.createXMLEventReader(is);
 							List<XMLEvent> result = new ArrayList<>();
 							eventReader.forEachRemaining(event -> result.add((XMLEvent) event));
 							return result;
@@ -181,7 +182,7 @@ public class XmlEventDecoder extends AbstractDecoder<XMLEvent> {
 		public List<? extends XMLEvent> apply(DataBuffer dataBuffer) {
 			try {
 				increaseByteCount(dataBuffer);
-				this.streamReader.getInputFeeder().feedInput(dataBuffer.toByteBuffer());
+				this.streamReader.getInputFeeder().feedInput(dataBuffer.asByteBuffer());
 				List<XMLEvent> events = new ArrayList<>();
 				while (true) {
 					if (this.streamReader.next() == AsyncXMLStreamReader.EVENT_INCOMPLETE) {

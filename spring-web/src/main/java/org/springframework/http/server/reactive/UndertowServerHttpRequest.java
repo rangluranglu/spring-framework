@@ -35,7 +35,6 @@ import reactor.core.publisher.Flux;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.http.HttpCookie;
-import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedMultiValueMap;
@@ -78,8 +77,8 @@ class UndertowServerHttpRequest extends AbstractServerHttpRequest {
 	}
 
 	@Override
-	public HttpMethod getMethod() {
-		return HttpMethod.valueOf(this.exchange.getRequestMethod().toString());
+	public String getMethodValue() {
+		return this.exchange.getRequestMethod().toString();
 	}
 
 	@SuppressWarnings("deprecation")
@@ -176,7 +175,7 @@ class UndertowServerHttpRequest extends AbstractServerHttpRequest {
 		@Nullable
 		protected DataBuffer read() throws IOException {
 			PooledByteBuffer pooledByteBuffer = this.byteBufferPool.allocate();
-			try (pooledByteBuffer) {
+			try {
 				ByteBuffer byteBuffer = pooledByteBuffer.getBuffer();
 				int read = this.channel.read(byteBuffer);
 
@@ -194,6 +193,9 @@ class UndertowServerHttpRequest extends AbstractServerHttpRequest {
 					onAllDataRead();
 				}
 				return null;
+			}
+			finally {
+				pooledByteBuffer.close();
 			}
 		}
 

@@ -32,7 +32,6 @@ class LeakAwareDataBufferFactoryTests {
 
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void leak() {
 		DataBuffer dataBuffer = this.bufferFactory.allocateBuffer();
 		try {
@@ -45,7 +44,7 @@ class LeakAwareDataBufferFactoryTests {
 
 	@Test
 	void noLeak() {
-		DataBuffer dataBuffer = this.bufferFactory.allocateBuffer(256);
+		DataBuffer dataBuffer = this.bufferFactory.allocateBuffer();
 		release(dataBuffer);
 		this.bufferFactory.checkForLeaks();
 	}

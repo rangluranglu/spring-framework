@@ -62,7 +62,7 @@ class StatusAssertionTests {
 		StatusAssertions assertions = statusAssertions(600);
 
 		// Success
-		// assertions.isEqualTo(600);
+		assertions.isEqualTo(600);
 
 		// Wrong status
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->

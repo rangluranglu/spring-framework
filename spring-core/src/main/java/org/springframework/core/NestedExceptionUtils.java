@@ -29,6 +29,7 @@ import org.springframework.lang.Nullable;
  * @since 2.0
  * @see NestedRuntimeException
  * @see NestedCheckedException
+ * @see org.springframework.web.util.NestedServletException
  */
 public abstract class NestedExceptionUtils {
 
@@ -37,10 +38,7 @@ public abstract class NestedExceptionUtils {
 	 * @param message the base message
 	 * @param cause the root cause
 	 * @return the full exception message
-	 * @deprecated as of 6.0, in favor of custom exception messages
-	 * with selective inclusion of cause messages
 	 */
-	@Deprecated(since = "6.0")
 	@Nullable
 	public static String buildMessage(@Nullable String message, @Nullable Throwable cause) {
 		if (cause == null) {

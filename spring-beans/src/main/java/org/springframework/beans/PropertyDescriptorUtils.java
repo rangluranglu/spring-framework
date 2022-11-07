@@ -17,6 +17,7 @@
 package org.springframework.beans;
 
 import java.beans.IntrospectionException;
+import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -28,7 +29,6 @@ import java.util.TreeMap;
 
 import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
-import org.springframework.util.StringUtils;
 
 /**
  * Common delegate methods for Spring's internal {@link PropertyDescriptor} implementations.
@@ -80,7 +80,7 @@ abstract class PropertyDescriptorUtils {
 				continue;
 			}
 
-			String propertyName = StringUtils.uncapitalizeAsProperty(methodName.substring(nameIndex));
+			String propertyName = Introspector.decapitalize(methodName.substring(nameIndex));
 			if (propertyName.isEmpty()) {
 				continue;
 			}

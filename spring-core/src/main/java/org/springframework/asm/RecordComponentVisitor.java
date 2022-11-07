@@ -45,7 +45,7 @@ public abstract class RecordComponentVisitor {
   /**
    * The record visitor to which this visitor must delegate method calls. May be {@literal null}.
    */
-  protected RecordComponentVisitor delegate;
+  /*package-private*/ RecordComponentVisitor delegate;
 
   /**
    * Constructs a new {@link RecordComponentVisitor}.
@@ -83,8 +83,7 @@ public abstract class RecordComponentVisitor {
   /**
    * The record visitor to which this visitor must delegate method calls. May be {@literal null}.
    *
-   * @return the record visitor to which this visitor must delegate method calls, or {@literal
-   *     null}.
+   * @return the record visitor to which this visitor must delegate method calls or {@literal null}.
    */
   public RecordComponentVisitor getDelegate() {
     return delegate;

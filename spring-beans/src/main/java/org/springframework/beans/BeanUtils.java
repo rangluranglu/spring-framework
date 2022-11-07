@@ -29,6 +29,7 @@ import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -78,15 +79,20 @@ public abstract class BeanUtils {
 	private static final Set<Class<?>> unknownEditorTypes =
 			Collections.newSetFromMap(new ConcurrentReferenceHashMap<>(64));
 
-	private static final Map<Class<?>, Object> DEFAULT_TYPE_VALUES = Map.of(
-			boolean.class, false,
-			byte.class, (byte) 0,
-			short.class, (short) 0,
-			int.class, 0,
-			long.class, 0L,
-			float.class, 0F,
-			double.class, 0D,
-			char.class, '\0');
+	private static final Map<Class<?>, Object> DEFAULT_TYPE_VALUES;
+
+	static {
+		Map<Class<?>, Object> values = new HashMap<>();
+		values.put(boolean.class, false);
+		values.put(byte.class, (byte) 0);
+		values.put(short.class, (short) 0);
+		values.put(int.class, 0);
+		values.put(long.class, 0L);
+		values.put(float.class, 0F);
+		values.put(double.class, 0D);
+		values.put(char.class, '\0');
+		DEFAULT_TYPE_VALUES = Collections.unmodifiableMap(values);
+	}
 
 
 	/**
@@ -136,20 +142,19 @@ public abstract class BeanUtils {
 		if (clazz.isInterface()) {
 			throw new BeanInstantiationException(clazz, "Specified class is an interface");
 		}
-		Constructor<T> ctor;
 		try {
-			ctor = clazz.getDeclaredConstructor();
+			return instantiateClass(clazz.getDeclaredConstructor());
 		}
 		catch (NoSuchMethodException ex) {
-			ctor = findPrimaryConstructor(clazz);
-			if (ctor == null) {
-				throw new BeanInstantiationException(clazz, "No default constructor found", ex);
+			Constructor<T> ctor = findPrimaryConstructor(clazz);
+			if (ctor != null) {
+				return instantiateClass(ctor);
 			}
+			throw new BeanInstantiationException(clazz, "No default constructor found", ex);
 		}
 		catch (LinkageError err) {
 			throw new BeanInstantiationException(clazz, "Unresolvable class definition", err);
 		}
-		return instantiateClass(ctor);
 	}
 
 	/**
@@ -191,12 +196,8 @@ public abstract class BeanUtils {
 				return KotlinDelegate.instantiateClass(ctor, args);
 			}
 			else {
-				int parameterCount = ctor.getParameterCount();
-				Assert.isTrue(args.length <= parameterCount, "Can't specify more arguments than constructor parameters");
-				if (parameterCount == 0) {
-					return ctor.newInstance();
-				}
 				Class<?>[] parameterTypes = ctor.getParameterTypes();
+				Assert.isTrue(args.length <= parameterTypes.length, "Can't specify more arguments than constructor parameters");
 				Object[] argsWithDefaultValues = new Object[args.length];
 				for (int i = 0 ; i < args.length; i++) {
 					if (args[i] == null) {
@@ -613,8 +614,8 @@ public abstract class BeanUtils {
 	 * @return a corresponding MethodParameter object
 	 */
 	public static MethodParameter getWriteMethodParameter(PropertyDescriptor pd) {
-		if (pd instanceof GenericTypeAwarePropertyDescriptor typeAwarePd) {
-			return new MethodParameter(typeAwarePd.getWriteMethodParameter());
+		if (pd instanceof GenericTypeAwarePropertyDescriptor) {
+			return new MethodParameter(((GenericTypeAwarePropertyDescriptor) pd).getWriteMethodParameter());
 		}
 		else {
 			Method writeMethod = pd.getWriteMethod();
@@ -880,13 +881,9 @@ public abstract class BeanUtils {
 			}
 
 			List<KParameter> parameters = kotlinConstructor.getParameters();
-
+			Map<KParameter, Object> argParameters = CollectionUtils.newHashMap(parameters.size());
 			Assert.isTrue(args.length <= parameters.size(),
 					"Number of provided arguments should be less of equals than number of constructor parameters");
-			if (parameters.isEmpty()) {
-				return kotlinConstructor.call();
-			}
-			Map<KParameter, Object> argParameters = CollectionUtils.newHashMap(parameters.size());
 			for (int i = 0 ; i < args.length ; i++) {
 				if (!(parameters.get(i).isOptional() && args[i] == null)) {
 					argParameters.put(parameters.get(i), args[i]);

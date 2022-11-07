@@ -23,9 +23,9 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.StreamUtils;
 
 /**
  * {@link ClientHttpResponse} implementation based on OkHttp 3.x.
@@ -35,7 +35,7 @@ import org.springframework.util.Assert;
  * @author Roy Clarkson
  * @since 4.3
  */
-class OkHttp3ClientHttpResponse implements ClientHttpResponse {
+class OkHttp3ClientHttpResponse extends AbstractClientHttpResponse {
 
 	private final Response response;
 
@@ -50,12 +50,6 @@ class OkHttp3ClientHttpResponse implements ClientHttpResponse {
 
 
 	@Override
-	public HttpStatusCode getStatusCode() throws IOException {
-		return HttpStatusCode.valueOf(this.response.code());
-	}
-
-	@Override
-	@Deprecated
 	public int getRawStatusCode() {
 		return this.response.code();
 	}
@@ -68,7 +62,7 @@ class OkHttp3ClientHttpResponse implements ClientHttpResponse {
 	@Override
 	public InputStream getBody() throws IOException {
 		ResponseBody body = this.response.body();
-		return (body != null ? body.byteStream() : InputStream.nullInputStream());
+		return (body != null ? body.byteStream() : StreamUtils.emptyInput());
 	}
 
 	@Override

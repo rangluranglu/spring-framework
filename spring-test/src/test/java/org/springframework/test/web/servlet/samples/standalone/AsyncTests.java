@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.Person;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureTask;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -56,7 +58,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  * @author Sam Brannen
  * @author Jacek Suchenia
  */
-class AsyncTests {
+public class AsyncTests {
 
 	private final AsyncController asyncController = new AsyncController();
 
@@ -64,7 +66,7 @@ class AsyncTests {
 
 
 	@Test
-	void callable() throws Exception {
+	public void callable() throws Exception {
 		MvcResult mvcResult = this.mockMvc.perform(get("/1").param("callable", "true"))
 				.andExpect(request().asyncStarted())
 				.andExpect(request().asyncResult(equalTo(new Person("Joe"))))
@@ -78,7 +80,7 @@ class AsyncTests {
 	}
 
 	@Test
-	void streaming() throws Exception {
+	public void streaming() throws Exception {
 		this.mockMvc.perform(get("/1").param("streaming", "true"))
 				.andExpect(request().asyncStarted())
 				.andDo(MvcResult::getAsyncResult) // fetch async result similar to "asyncDispatch" builder
@@ -87,7 +89,7 @@ class AsyncTests {
 	}
 
 	@Test
-	void streamingSlow() throws Exception {
+	public void streamingSlow() throws Exception {
 		this.mockMvc.perform(get("/1").param("streamingSlow", "true"))
 				.andExpect(request().asyncStarted())
 				.andDo(MvcResult::getAsyncResult)
@@ -96,7 +98,7 @@ class AsyncTests {
 	}
 
 	@Test
-	void streamingJson() throws Exception {
+	public void streamingJson() throws Exception {
 		this.mockMvc.perform(get("/1").param("streamingJson", "true"))
 				.andExpect(request().asyncStarted())
 				.andDo(MvcResult::getAsyncResult)
@@ -106,7 +108,7 @@ class AsyncTests {
 	}
 
 	@Test
-	void deferredResult() throws Exception {
+	public void deferredResult() throws Exception {
 		MvcResult mvcResult = this.mockMvc.perform(get("/1").param("deferredResult", "true"))
 				.andExpect(request().asyncStarted())
 				.andReturn();
@@ -118,7 +120,7 @@ class AsyncTests {
 	}
 
 	@Test
-	void deferredResultWithImmediateValue() throws Exception {
+	public void deferredResultWithImmediateValue() throws Exception {
 		MvcResult mvcResult = this.mockMvc.perform(get("/1").param("deferredResultWithImmediateValue", "true"))
 				.andExpect(request().asyncStarted())
 				.andExpect(request().asyncResult(new Person("Joe")))
@@ -131,7 +133,7 @@ class AsyncTests {
 	}
 
 	@Test  // SPR-13079
-	void deferredResultWithDelayedError() throws Exception {
+	public void deferredResultWithDelayedError() throws Exception {
 		MvcResult mvcResult = this.mockMvc.perform(get("/1").param("deferredResultWithDelayedError", "true"))
 				.andExpect(request().asyncStarted())
 				.andReturn();
@@ -142,7 +144,7 @@ class AsyncTests {
 	}
 
 	@Test
-	void listenableFuture() throws Exception {
+	public void listenableFuture() throws Exception {
 		MvcResult mvcResult = this.mockMvc.perform(get("/1").param("listenableFuture", "true"))
 				.andExpect(request().asyncStarted())
 				.andReturn();
@@ -154,7 +156,7 @@ class AsyncTests {
 	}
 
 	@Test  // SPR-12597
-	void completableFutureWithImmediateValue() throws Exception {
+	public void completableFutureWithImmediateValue() throws Exception {
 		MvcResult mvcResult = this.mockMvc.perform(get("/1").param("completableFutureWithImmediateValue", "true"))
 				.andExpect(request().asyncStarted())
 				.andReturn();
@@ -166,7 +168,7 @@ class AsyncTests {
 	}
 
 	@Test  // SPR-12735
-	void printAsyncResult() throws Exception {
+	public void printAsyncResult() throws Exception {
 		StringWriter writer = new StringWriter();
 
 		MvcResult mvcResult = this.mockMvc.perform(get("/1").param("deferredResult", "true"))
@@ -192,17 +194,17 @@ class AsyncTests {
 	private static class AsyncController {
 
 		@RequestMapping(params = "callable")
-		Callable<Person> getCallable() {
+		public Callable<Person> getCallable() {
 			return () -> new Person("Joe");
 		}
 
 		@RequestMapping(params = "streaming")
-		StreamingResponseBody getStreaming() {
+		public StreamingResponseBody getStreaming() {
 			return os -> os.write("name=Joe".getBytes(StandardCharsets.UTF_8));
 		}
 
 		@RequestMapping(params = "streamingSlow")
-		StreamingResponseBody getStreamingSlow() {
+		public StreamingResponseBody getStreamingSlow() {
 			return os -> {
 				os.write("name=Joe".getBytes());
 				try {
@@ -216,43 +218,41 @@ class AsyncTests {
 		}
 
 		@RequestMapping(params = "streamingJson")
-		ResponseEntity<StreamingResponseBody> getStreamingJson() {
+		public ResponseEntity<StreamingResponseBody> getStreamingJson() {
 			return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 					.body(os -> os.write("{\"name\":\"Joe\",\"someDouble\":0.5}".getBytes(StandardCharsets.UTF_8)));
 		}
 
 		@RequestMapping(params = "deferredResult")
-		DeferredResult<Person> getDeferredResult() {
+		public DeferredResult<Person> getDeferredResult() {
 			DeferredResult<Person> result = new DeferredResult<>();
 			delay(100, () -> result.setResult(new Person("Joe")));
 			return result;
 		}
 
 		@RequestMapping(params = "deferredResultWithImmediateValue")
-		DeferredResult<Person> getDeferredResultWithImmediateValue() {
+		public DeferredResult<Person> getDeferredResultWithImmediateValue() {
 			DeferredResult<Person> deferredResult = new DeferredResult<>();
 			deferredResult.setResult(new Person("Joe"));
 			return deferredResult;
 		}
 
 		@RequestMapping(params = "deferredResultWithDelayedError")
-		DeferredResult<Person> getDeferredResultWithDelayedError() {
+		public DeferredResult<Person> getDeferredResultWithDelayedError() {
 			DeferredResult<Person> result = new DeferredResult<>();
 			delay(100, () -> result.setErrorResult(new RuntimeException("Delayed Error")));
 			return result;
 		}
 
 		@RequestMapping(params = "listenableFuture")
-		@SuppressWarnings("deprecation")
-		org.springframework.util.concurrent.ListenableFuture<Person> getListenableFuture() {
-			org.springframework.util.concurrent.ListenableFutureTask<Person> futureTask =
-					new org.springframework.util.concurrent.ListenableFutureTask<>(() -> new Person("Joe"));
+		public ListenableFuture<Person> getListenableFuture() {
+			ListenableFutureTask<Person> futureTask = new ListenableFutureTask<>(() -> new Person("Joe"));
 			delay(100, futureTask);
 			return futureTask;
 		}
 
 		@RequestMapping(params = "completableFutureWithImmediateValue")
-		CompletableFuture<Person> getCompletableFutureWithImmediateValue() {
+		public CompletableFuture<Person> getCompletableFutureWithImmediateValue() {
 			CompletableFuture<Person> future = new CompletableFuture<>();
 			future.complete(new Person("Joe"));
 			return future;
@@ -260,7 +260,7 @@ class AsyncTests {
 
 		@ExceptionHandler(Exception.class)
 		@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-		String errorHandler(Exception ex) {
+		public String errorHandler(Exception ex) {
 			return ex.getMessage();
 		}
 

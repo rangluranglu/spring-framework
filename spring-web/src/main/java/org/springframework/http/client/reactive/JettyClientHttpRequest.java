@@ -33,6 +33,7 @@ import reactor.core.publisher.MonoSink;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.core.io.buffer.PooledDataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -51,6 +52,7 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 	private final DataBufferFactory bufferFactory;
 
 	private final ReactiveRequest.Builder builder;
+
 
 
 	public JettyClientHttpRequest(Request jettyRequest, DataBufferFactory bufferFactory) {
@@ -102,7 +104,7 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 	public Mono<Void> writeAndFlushWith(Publisher<? extends Publisher<? extends DataBuffer>> body) {
 		return writeWith(Flux.from(body)
 				.flatMap(Function.identity())
-				.doOnDiscard(DataBuffer.class, DataBufferUtils::release));
+				.doOnDiscard(PooledDataBuffer.class, DataBufferUtils::release));
 	}
 
 	private String getContentType() {
@@ -111,7 +113,7 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 	}
 
 	private ContentChunk toContentChunk(DataBuffer buffer, MonoSink<Void> sink) {
-		return new ContentChunk(buffer.toByteBuffer(), new Callback() {
+		return new ContentChunk(buffer.asByteBuffer(), new Callback() {
 			@Override
 			public void succeeded() {
 				DataBufferUtils.release(buffer);
@@ -134,12 +136,10 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 	@Override
 	protected void applyHeaders() {
 		HttpHeaders headers = getHeaders();
-		this.jettyRequest.headers(fields -> {
-			headers.forEach((key, value) -> value.forEach(v -> fields.add(key, v)));
-			if (!headers.containsKey(HttpHeaders.ACCEPT)) {
-				fields.add(HttpHeaders.ACCEPT, "*/*");
-			}
-		});
+		headers.forEach((key, value) -> value.forEach(v -> this.jettyRequest.header(key, v)));
+		if (!headers.containsKey(HttpHeaders.ACCEPT)) {
+			this.jettyRequest.header(HttpHeaders.ACCEPT, "*/*");
+		}
 	}
 
 	@Override

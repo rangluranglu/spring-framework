@@ -17,11 +17,10 @@
 package org.springframework.messaging.simp.stomp;
 
 import java.lang.reflect.Type;
-import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
@@ -48,6 +47,9 @@ import org.springframework.util.Assert;
 import org.springframework.util.IdGenerator;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * Default implementation of {@link ConnectionHandlingStompSession}.
@@ -83,7 +85,7 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 
 	private final StompHeaders connectHeaders;
 
-	private final CompletableFuture<StompSession> sessionFuture = new CompletableFuture<>();
+	private final SettableListenableFuture<StompSession> sessionFuture = new SettableListenableFuture<>();
 
 	private MessageConverter converter = new SimpleMessageConverter();
 
@@ -147,7 +149,7 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 	}
 
 	@Override
-	public CompletableFuture<StompSession> getSession() {
+	public ListenableFuture<StompSession> getSessionFuture() {
 		return this.sessionFuture;
 	}
 
@@ -287,7 +289,7 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 		TcpConnection<byte[]> conn = this.connection;
 		Assert.state(conn != null, "Connection closed");
 		try {
-			conn.sendAsync(message).get();
+			conn.send(message).get();
 		}
 		catch (ExecutionException ex) {
 			throw new MessageDeliveryException(message, ex.getCause());
@@ -405,7 +407,7 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Failed to connect session id=" + this.sessionId, ex);
 		}
-		this.sessionFuture.completeExceptionally(ex);
+		this.sessionFuture.setException(ex);
 		this.sessionHandler.handleTransportError(this, ex);
 	}
 
@@ -448,7 +450,7 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 				else if (StompCommand.CONNECTED.equals(command)) {
 					initHeartbeatTasks(headers);
 					this.version = headers.getFirst("version");
-					this.sessionFuture.complete(this);
+					this.sessionFuture.set(this);
 					this.sessionHandler.afterConnected(this, headers);
 				}
 				else if (StompCommand.ERROR.equals(command)) {
@@ -504,7 +506,7 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 	@Override
 	public void handleFailure(Throwable ex) {
 		try {
-			this.sessionFuture.completeExceptionally(ex);  // no-op if already set
+			this.sessionFuture.setException(ex);  // no-op if already set
 			this.sessionHandler.handleTransportError(this, ex);
 		}
 		catch (Throwable ex2) {
@@ -567,7 +569,7 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 		private void initReceiptHandling() {
 			Assert.notNull(getTaskScheduler(), "To track receipts, a TaskScheduler must be configured");
 			DefaultStompSession.this.receiptHandlers.put(this.receiptId, this);
-			Instant startTime = Instant.now().plusMillis(getReceiptTimeLimit());
+			Date startTime = new Date(System.currentTimeMillis() + getReceiptTimeLimit());
 			this.future = getTaskScheduler().schedule(this::handleReceiptNotReceived, startTime);
 		}
 
@@ -715,11 +717,16 @@ public class DefaultStompSession implements ConnectionHandlingStompSession {
 		public void run() {
 			TcpConnection<byte[]> conn = connection;
 			if (conn != null) {
-				conn.sendAsync(HEARTBEAT).whenComplete((unused, throwable) -> {
-					if (throwable != null) {
-						handleFailure(throwable);
-					}
-				});
+				conn.send(HEARTBEAT).addCallback(
+						new ListenableFutureCallback<Void>() {
+							@Override
+							public void onSuccess(@Nullable Void result) {
+							}
+							@Override
+							public void onFailure(Throwable ex) {
+								handleFailure(ex);
+							}
+						});
 			}
 		}
 	}

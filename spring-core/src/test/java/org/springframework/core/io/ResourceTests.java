@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.stream.Stream;
 
 import okhttp3.mockwebserver.Dispatcher;
@@ -59,6 +59,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Brian Clozel
  */
 class ResourceTests {
+
 
 	@ParameterizedTest(name = "{index}: {0}")
 	@MethodSource("resource")
@@ -204,6 +205,40 @@ class ResourceTests {
 		}
 	}
 
+
+	@Nested
+	class ClassPathResourceTests {
+
+		@Test
+		void equalsAndHashCode() {
+			Resource resource = new ClassPathResource("org/springframework/core/io/Resource.class");
+			Resource resource2 = new ClassPathResource("org/springframework/core/../core/io/./Resource.class");
+			Resource resource3 = new ClassPathResource("org/springframework/core/").createRelative("../core/io/./Resource.class");
+			assertThat(resource2).isEqualTo(resource);
+			assertThat(resource3).isEqualTo(resource);
+			// Check whether equal/hashCode works in a HashSet.
+			HashSet<Resource> resources = new HashSet<>();
+			resources.add(resource);
+			resources.add(resource2);
+			assertThat(resources.size()).isEqualTo(1);
+		}
+
+		@Test
+		void resourcesWithDifferentPathsAreEqual() {
+			Resource resource = new ClassPathResource("org/springframework/core/io/Resource.class", getClass().getClassLoader());
+			ClassPathResource sameResource = new ClassPathResource("org/springframework/core/../core/io/./Resource.class", getClass().getClassLoader());
+			assertThat(sameResource).isEqualTo(resource);
+		}
+
+		@Test
+		void relativeResourcesAreEqual() throws Exception {
+			Resource resource = new ClassPathResource("dir/");
+			Resource relative = resource.createRelative("subdir");
+			assertThat(relative).isEqualTo(new ClassPathResource("dir/subdir"));
+		}
+
+	}
+
 	@Nested
 	class FileSystemResourceTests {
 
@@ -252,27 +287,6 @@ class ResourceTests {
 			}
 		}
 
-		@Test
-		void urlAndUriAreNormalizedWhenCreatedFromFile() throws Exception {
-			Path path = Path.of("src/test/resources/scanned-resources/resource#test1.txt").toAbsolutePath();
-			assertUrlAndUriBehavior(new FileSystemResource(path.toFile()));
-		}
-
-		@Test
-		void urlAndUriAreNormalizedWhenCreatedFromPath() throws Exception {
-			Path path = Path.of("src/test/resources/scanned-resources/resource#test1.txt").toAbsolutePath();
-			assertUrlAndUriBehavior(new FileSystemResource(path));
-		}
-
-		/**
-		 * The following assertions serve as regression tests for the lack of the
-		 * "authority component" (//) in the returned URI/URL. For example, we are
-		 * expecting file:/my/path (or file:/C:/My/Path) instead of file:///my/path.
-		 */
-		private void assertUrlAndUriBehavior(Resource resource) throws IOException {
-			assertThat(resource.getURL().toString()).matches("^file:\\/[^\\/].+test1\\.txt$");
-			assertThat(resource.getURI().toString()).matches("^file:\\/[^\\/].+test1\\.txt$");
-		}
 	}
 
 	@Nested
@@ -291,37 +305,6 @@ class ResourceTests {
 			assertThat(new UrlResource("file:/dir/test.txt?argh").getFilename()).isEqualTo("test.txt");
 			assertThat(new UrlResource("file:\\dir\\test.txt?argh").getFilename()).isEqualTo("test.txt");
 			assertThat(new UrlResource("file:\\dir/test.txt?argh").getFilename()).isEqualTo("test.txt");
-		}
-
-		@Test
-		void filenameContainingHashTagIsExtractedFromFilePathUnencoded() throws Exception {
-			String unencodedPath = "/dir/test#1.txt";
-			String encodedPath = "/dir/test%231.txt";
-
-			URI uri = new URI("file", unencodedPath, null);
-			URL url = uri.toURL();
-			assertThat(uri.getPath()).isEqualTo(unencodedPath);
-			assertThat(uri.getRawPath()).isEqualTo(encodedPath);
-			assertThat(url.getPath()).isEqualTo(encodedPath);
-
-			UrlResource urlResource = new UrlResource(url);
-			assertThat(urlResource.getURI().getPath()).isEqualTo(unencodedPath);
-			assertThat(urlResource.getFilename()).isEqualTo("test#1.txt");
-		}
-
-		@Test
-		void factoryMethodsProduceEqualResources() throws Exception {
-			Resource resource1 = new UrlResource("file:core/io/Resource.class");
-			Resource resource2 = UrlResource.from("file:core/io/Resource.class");
-			Resource resource3 = UrlResource.from(resource1.getURI());
-
-			assertThat(resource2.getURL()).isEqualTo(resource1.getURL());
-			assertThat(resource3.getURL()).isEqualTo(resource1.getURL());
-
-			assertThat(UrlResource.from("file:core/../core/io/./Resource.class")).isEqualTo(resource1);
-			assertThat(UrlResource.from("file:/dir/test.txt?argh").getFilename()).isEqualTo("test.txt");
-			assertThat(UrlResource.from("file:\\dir\\test.txt?argh").getFilename()).isEqualTo("test.txt");
-			assertThat(UrlResource.from("file:\\dir/test.txt?argh").getFilename()).isEqualTo("test.txt");
 		}
 
 		@Test

@@ -19,15 +19,12 @@ package org.springframework.core.io;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -39,7 +36,6 @@ import org.springframework.util.StringUtils;
  * case of the {@code "file:"} protocol.
  *
  * @author Juergen Hoeller
- * @author Sam Brannen
  * @since 28.12.2003
  * @see java.net.URL
  */
@@ -141,49 +137,6 @@ public class UrlResource extends AbstractFileResolvingResource {
 
 
 	/**
-	 * Create a new {@code UrlResource} from the given {@link URI}.
-	 * <p>This factory method is a convenience for {@link #UrlResource(URI)} that
-	 * catches any {@link MalformedURLException} and rethrows it wrapped in an
-	 * {@link UncheckedIOException}; suitable for use in {@link java.util.Stream}
-	 * and {@link java.util.Optional} APIs or other scenarios when a checked
-	 * {@link IOException} is undesirable.
-	 * @param uri a URI
-	 * @throws UncheckedIOException if the given URL path is not valid
-	 * @since 6.0
-	 * @see #UrlResource(URI)
-	 */
-	public static UrlResource from(URI uri) throws UncheckedIOException {
-		try {
-			return new UrlResource(uri);
-		}
-		catch (MalformedURLException ex) {
-			throw new UncheckedIOException(ex);
-		}
-	}
-
-	/**
-	 * Create a new {@code UrlResource} from the given URL path.
-	 * <p>This factory method is a convenience for {@link #UrlResource(String)}
-	 * that catches any {@link MalformedURLException} and rethrows it wrapped in an
-	 * {@link UncheckedIOException}; suitable for use in {@link java.util.Stream}
-	 * and {@link java.util.Optional} APIs or other scenarios when a checked
-	 * {@link IOException} is undesirable.
-	 * @param path a URL path
-	 * @throws UncheckedIOException if the given URL path is not valid
-	 * @since 6.0
-	 * @see #UrlResource(String)
-	 */
-	public static UrlResource from(String path) throws UncheckedIOException {
-		try {
-			return new UrlResource(path);
-		}
-		catch (MalformedURLException ex) {
-			throw new UncheckedIOException(ex);
-		}
-	}
-
-
-	/**
 	 * Determine a cleaned URL for the given original URL.
 	 * @param originalUrl the original URL
 	 * @param originalPath the original URL path
@@ -235,8 +188,8 @@ public class UrlResource extends AbstractFileResolvingResource {
 		}
 		catch (IOException ex) {
 			// Close the HTTP connection (if applicable).
-			if (con instanceof HttpURLConnection httpConn) {
-				httpConn.disconnect();
+			if (con instanceof HttpURLConnection) {
+				((HttpURLConnection) con).disconnect();
 			}
 			throw ex;
 		}
@@ -318,15 +271,12 @@ public class UrlResource extends AbstractFileResolvingResource {
 	}
 
 	/**
-	 * This implementation returns the URL-decoded name of the file that this URL
-	 * refers to.
+	 * This implementation returns the name of the file that this URL refers to.
 	 * @see java.net.URL#getPath()
-	 * @see java.net.URLDecoder#decode(String, java.nio.charset.Charset)
 	 */
 	@Override
 	public String getFilename() {
-		String filename = StringUtils.getFilename(getCleanedUrl().getPath());
-		return URLDecoder.decode(filename, StandardCharsets.UTF_8);
+		return StringUtils.getFilename(getCleanedUrl().getPath());
 	}
 
 	/**
@@ -343,8 +293,8 @@ public class UrlResource extends AbstractFileResolvingResource {
 	 */
 	@Override
 	public boolean equals(@Nullable Object other) {
-		return (this == other || (other instanceof UrlResource resource &&
-				getCleanedUrl().equals(resource.getCleanedUrl())));
+		return (this == other || (other instanceof UrlResource &&
+				getCleanedUrl().equals(((UrlResource) other).getCleanedUrl())));
 	}
 
 	/**

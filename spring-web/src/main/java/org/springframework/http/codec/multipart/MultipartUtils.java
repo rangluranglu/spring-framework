@@ -23,10 +23,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMessage;
 import org.springframework.http.MediaType;
-import org.springframework.lang.Nullable;
 
 /**
  * Various static utility methods for dealing with multipart parsing.
@@ -50,23 +49,6 @@ abstract class MultipartUtils {
 		return StandardCharsets.UTF_8;
 	}
 
-	@Nullable
-	public static byte[] boundary(HttpMessage message, Charset headersCharset) {
-		MediaType contentType = message.getHeaders().getContentType();
-		if (contentType != null) {
-			String boundary = contentType.getParameter("boundary");
-			if (boundary != null) {
-				int len = boundary.length();
-				if (len > 2 && boundary.charAt(0) == '"' && boundary.charAt(len - 1) == '"') {
-					boundary = boundary.substring(1, len - 1);
-				}
-				return boundary.getBytes(headersCharset);
-			}
-		}
-		return null;
-	}
-
-
 	/**
 	 * Concatenates the given array of byte arrays.
 	 */
@@ -82,6 +64,23 @@ abstract class MultipartUtils {
 			len += byteArray.length;
 		}
 		return result;
+	}
+
+	/**
+	 * Slices the given buffer to the given index (exclusive).
+	 */
+	public static DataBuffer sliceTo(DataBuffer buf, int idx) {
+		int pos = buf.readPosition();
+		int len = idx - pos + 1;
+		return buf.retainedSlice(pos, len);
+	}
+
+	/**
+	 * Slices the given buffer from the given index (inclusive).
+	 */
+	public static DataBuffer sliceFrom(DataBuffer buf, int idx) {
+		int len = buf.writePosition() - idx - 1;
+		return buf.retainedSlice(idx + 1, len);
 	}
 
 	public static void closeChannel(Channel channel) {
@@ -102,9 +101,4 @@ abstract class MultipartUtils {
 		}
 	}
 
-	public static boolean isFormField(HttpHeaders headers) {
-		MediaType contentType = headers.getContentType();
-		return (contentType == null || MediaType.TEXT_PLAIN.equalsTypeAndSubtype(contentType))
-				&& headers.getContentDisposition().getFilename() == null;
-	}
 }

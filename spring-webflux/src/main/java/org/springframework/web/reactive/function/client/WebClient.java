@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,6 @@ import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
-import io.micrometer.observation.ObservationConvention;
-import io.micrometer.observation.ObservationRegistry;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -37,7 +35,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.ReactiveAdapterRegistry;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ClientHttpConnector;
@@ -258,20 +256,6 @@ public interface WebClient {
 		Builder defaultRequest(Consumer<RequestHeadersSpec<?>> defaultRequest);
 
 		/**
-		 * Register a default
-		 * {@link ResponseSpec#onStatus(Predicate, Function) status handler} to
-		 * apply to every response. Such default handlers are applied in the
-		 * order in which they are registered, and after any others that are
-		 * registered for a specific response.
-		 * @param statusPredicate to match responses with
-		 * @param exceptionFunction to map the response to an error signal
-		 * @return this builder
-		 * @since 6.0
-		 */
-		Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
-				Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction);
-
-		/**
 		 * Add the given filter to the end of the filter chain.
 		 * @param filter the filter to be added to the chain
 		 */
@@ -336,23 +320,6 @@ public interface WebClient {
 		 * @param exchangeFunction the exchange function to use
 		 */
 		Builder exchangeFunction(ExchangeFunction exchangeFunction);
-
-		/**
-		 * Provide an {@link ObservationRegistry} to use for recording
-		 * observations for HTTP client calls.
-		 * @param observationRegistry the observation registry to use
-		 * @since 6.0
-		 */
-		Builder observationRegistry(ObservationRegistry observationRegistry);
-
-		/**
-		 * Provide an {@link ObservationConvention} to use for collecting
-		 * metadata for the request observation. Will use {@link DefaultClientRequestObservationConvention}
-		 * if none provided.
-		 * @param observationConvention the observation convention to use
-		 * @since 6.0
-		 */
-		Builder observationConvention(ClientRequestObservationConvention observationConvention);
 
 		/**
 		 * Apply the given {@code Consumer} to this builder instance.
@@ -560,7 +527,7 @@ public interface WebClient {
 		 *             return response.bodyToMono(Person.class);
 		 *         }
 		 *         else {
-		 *             return response.createError();
+		 *             return response.createException().flatMap(Mono::error);
 		 *         }
 		 *     });
 		 * </pre>
@@ -589,7 +556,7 @@ public interface WebClient {
 		 *             return response.bodyToFlux(Person.class);
 		 *         }
 		 *         else {
-		 *             return response.createError().flux();
+		 *             return response.createException().flatMapMany(Mono::error);
 		 *         }
 		 *     });
 		 * </pre>
@@ -800,7 +767,7 @@ public interface WebClient {
 		 * @return this builder
 		 * @see ClientResponse#createException()
 		 */
-		ResponseSpec onStatus(Predicate<HttpStatusCode> statusPredicate,
+		ResponseSpec onStatus(Predicate<HttpStatus> statusPredicate,
 				Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction);
 
 		/**

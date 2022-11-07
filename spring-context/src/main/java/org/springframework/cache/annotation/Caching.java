@@ -23,8 +23,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.springframework.aot.hint.annotation.Reflective;
-
 /**
  * Group annotation for multiple cache annotations (of different or the same type).
  *
@@ -39,7 +37,6 @@ import org.springframework.aot.hint.annotation.Reflective;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Reflective
 public @interface Caching {
 
 	Cacheable[] cacheable() default {};

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.context.annotation;
 
+import java.beans.Introspector;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -40,13 +41,13 @@ import org.springframework.util.StringUtils;
  * {@link org.springframework.stereotype.Repository @Repository}) are
  * themselves annotated with {@code @Component}.
  *
- * <p>Also supports Jakarta EE's {@link jakarta.annotation.ManagedBean} and
- * JSR-330's {@link jakarta.inject.Named} annotations, if available. Note that
+ * <p>Also supports Java EE 6's {@link javax.annotation.ManagedBean} and
+ * JSR-330's {@link javax.inject.Named} annotations, if available. Note that
  * Spring component annotations always override such standard annotations.
  *
  * <p>If the annotation's value doesn't indicate a bean name, an appropriate
  * name will be built based on the short name of the class (with the first
- * letter lower-cased), unless the first two letters are uppercase. For example:
+ * letter lower-cased), unless the two first letters are uppercase. For example:
  *
  * <pre class="code">com.xyz.FooServiceImpl -&gt; fooServiceImpl</pre>
  * <pre class="code">com.xyz.URLFooServiceImpl -&gt; URLFooServiceImpl</pre>
@@ -58,7 +59,7 @@ import org.springframework.util.StringUtils;
  * @see org.springframework.stereotype.Repository#value()
  * @see org.springframework.stereotype.Service#value()
  * @see org.springframework.stereotype.Controller#value()
- * @see jakarta.inject.Named#value()
+ * @see javax.inject.Named#value()
  * @see FullyQualifiedAnnotationBeanNameGenerator
  */
 public class AnnotationBeanNameGenerator implements BeanNameGenerator {
@@ -107,7 +108,8 @@ public class AnnotationBeanNameGenerator implements BeanNameGenerator {
 				});
 				if (isStereotypeWithNameValue(type, metaTypes, attributes)) {
 					Object value = attributes.get("value");
-					if (value instanceof String strVal) {
+					if (value instanceof String) {
+						String strVal = (String) value;
 						if (StringUtils.hasLength(strVal)) {
 							if (beanName != null && !strVal.equals(beanName)) {
 								throw new IllegalStateException("Stereotype annotations suggest inconsistent " +
@@ -135,8 +137,8 @@ public class AnnotationBeanNameGenerator implements BeanNameGenerator {
 
 		boolean isStereotype = annotationType.equals(COMPONENT_ANNOTATION_CLASSNAME) ||
 				metaAnnotationTypes.contains(COMPONENT_ANNOTATION_CLASSNAME) ||
-				annotationType.equals("jakarta.annotation.ManagedBean") ||
-				annotationType.equals("jakarta.inject.Named");
+				annotationType.equals("javax.annotation.ManagedBean") ||
+				annotationType.equals("javax.inject.Named");
 
 		return (isStereotype && attributes != null && attributes.containsKey("value"));
 	}
@@ -166,7 +168,7 @@ public class AnnotationBeanNameGenerator implements BeanNameGenerator {
 		String beanClassName = definition.getBeanClassName();
 		Assert.state(beanClassName != null, "No bean class name set");
 		String shortClassName = ClassUtils.getShortName(beanClassName);
-		return StringUtils.uncapitalizeAsProperty(shortClassName);
+		return Introspector.decapitalize(shortClassName);
 	}
 
 }

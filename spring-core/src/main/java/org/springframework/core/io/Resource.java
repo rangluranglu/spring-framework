@@ -158,11 +158,10 @@ public interface Resource extends InputStreamSource {
 	Resource createRelative(String relativePath) throws IOException;
 
 	/**
-	 * Determine the filename for this resource &mdash; typically the last
-	 * part of the path &mdash; for example, {@code "myfile.txt"}.
+	 * Determine a filename for this resource, i.e. typically the last
+	 * part of the path: for example, "myfile.txt".
 	 * <p>Returns {@code null} if this type of resource does not
 	 * have a filename.
-	 * <p>Implementations are encouraged to return the filename unencoded.
 	 */
 	@Nullable
 	String getFilename();

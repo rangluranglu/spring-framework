@@ -55,7 +55,7 @@ public abstract class NamedParameterUtils {
 	 * Set of characters that qualify as parameter separators,
 	 * indicating that a parameter name in an SQL String has ended.
 	 */
-	private static final String PARAMETER_SEPARATORS = "\"':&,;()|=+-*%/\\<>^]";
+	private static final String PARAMETER_SEPARATORS = "\"':&,;()|=+-*%/\\<>^";
 
 	/**
 	 * An index with separator flags per character code.
@@ -147,11 +147,6 @@ public abstract class NamedParameterUtils {
 					}
 					if (j - i > 1) {
 						parameter = sql.substring(i + 1, j);
-						if (j < statement.length && statement[j] == ']' && parameter.contains("[")) {
-							// preserve end bracket for index/key
-							j++;
-							parameter = sql.substring(i + 1, j);
-						}
 						namedParameterCount = addNewNamedParameter(
 								namedParameters, namedParameterCount, parameter);
 						totalParameterCount = addNamedParameter(
@@ -303,7 +298,8 @@ public abstract class NamedParameterUtils {
 						}
 						k++;
 						Object entryItem = entryIter.next();
-						if (entryItem instanceof Object[] expressionList) {
+						if (entryItem instanceof Object[]) {
+							Object[] expressionList = (Object[]) entryItem;
 							actualSql.append('(');
 							for (int m = 0; m < expressionList.length; m++) {
 								if (m > 0) {

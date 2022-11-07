@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,8 +52,8 @@ public class LeakAwareNettyDataBufferFactory extends NettyDataBufferFactory {
 		while (true) {
 			try {
 				this.created.forEach(info -> {
-					if (((PooledDataBuffer) info.dataBuffer()).isAllocated()) {
-						throw info.error();
+					if (((PooledDataBuffer) info.getDataBuffer()).isAllocated()) {
+						throw info.getError();
 					}
 				});
 				break;
@@ -73,7 +73,6 @@ public class LeakAwareNettyDataBufferFactory extends NettyDataBufferFactory {
 
 
 	@Override
-	@SuppressWarnings("deprecation")
 	public NettyDataBuffer allocateBuffer() {
 		return (NettyDataBuffer) recordHint(super.allocateBuffer());
 	}
@@ -106,7 +105,23 @@ public class LeakAwareNettyDataBufferFactory extends NettyDataBufferFactory {
 	}
 
 
-	private static record DataBufferLeakInfo(DataBuffer dataBuffer, AssertionError error) {
-	}
+	private static class DataBufferLeakInfo {
 
+		private final DataBuffer dataBuffer;
+
+		private final AssertionError error;
+
+		DataBufferLeakInfo(DataBuffer dataBuffer, AssertionError error) {
+			this.dataBuffer = dataBuffer;
+			this.error = error;
+		}
+
+		DataBuffer getDataBuffer() {
+			return this.dataBuffer;
+		}
+
+		AssertionError getError() {
+			return this.error;
+		}
+	}
 }

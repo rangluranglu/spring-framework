@@ -33,7 +33,6 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.Conventions;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.lang.Nullable;
@@ -56,7 +55,7 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 
 	private final String name;
 
-	private HttpStatusCode status = HttpStatus.OK;
+	private int status = HttpStatus.OK.value();
 
 	private final HttpHeaders headers = new HttpHeaders();
 
@@ -68,7 +67,8 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 	public DefaultRenderingResponseBuilder(RenderingResponse other) {
 		Assert.notNull(other, "RenderingResponse must not be null");
 		this.name = other.name();
-		this.status = other.statusCode();
+		this.status = (other instanceof DefaultRenderingResponse ?
+				((DefaultRenderingResponse) other).statusCode : other.statusCode().value());
 		this.headers.putAll(other.headers());
 		this.model.putAll(other.model());
 	}
@@ -80,15 +80,16 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 
 
 	@Override
-	public RenderingResponse.Builder status(HttpStatusCode status) {
-		Assert.notNull(status, "HttpStatusCode must not be null");
-		this.status = status;
+	public RenderingResponse.Builder status(HttpStatus status) {
+		Assert.notNull(status, "HttpStatus must not be null");
+		this.status = status.value();
 		return this;
 	}
 
 	@Override
 	public RenderingResponse.Builder status(int status) {
-		return status(HttpStatusCode.valueOf(status));
+		this.status = status;
+		return this;
 	}
 
 	@Override
@@ -166,7 +167,7 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 
 		private final Map<String, Object> model;
 
-		public DefaultRenderingResponse(HttpStatusCode statusCode, HttpHeaders headers,
+		public DefaultRenderingResponse(int statusCode, HttpHeaders headers,
 				MultiValueMap<String, ResponseCookie> cookies, String name, Map<String, Object> model) {
 
 			super(statusCode, headers, cookies, Collections.emptyMap());
@@ -205,10 +206,11 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 		}
 
 		private void setStatus(View view) {
-			if (view instanceof RedirectView redirectView) {
-				HttpStatusCode statusCode = statusCode();
-				if (statusCode.is3xxRedirection()) {
-					redirectView.setStatusCode(statusCode);
+			if (view instanceof RedirectView) {
+				HttpStatus httpStatus = HttpStatus.resolve(rawStatusCode());
+				if (httpStatus != null && httpStatus.is3xxRedirection()) {
+					RedirectView redirectView = (RedirectView) view;
+					redirectView.setStatusCode(httpStatus);
 				}
 			}
 		}

@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
@@ -33,15 +34,14 @@ import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.beans.factory.annotation.BeanFactoryAnnotationUtils;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.beans.factory.config.EmbeddedValueResolver;
+import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.core.task.support.TaskExecutorAdapter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.util.StringValueResolver;
+import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.function.SingletonSupplier;
 
 /**
@@ -57,7 +57,6 @@ import org.springframework.util.function.SingletonSupplier;
  * @author Chris Beams
  * @author Juergen Hoeller
  * @author Stephane Nicoll
- * @author He Bo
  * @since 3.1.2
  */
 public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
@@ -82,8 +81,6 @@ public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
 	@Nullable
 	private BeanFactory beanFactory;
 
-	@Nullable
-	private StringValueResolver embeddedValueResolver;
 
 	/**
 	 * Create a new instance with a default {@link AsyncUncaughtExceptionHandler}.
@@ -154,14 +151,12 @@ public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
-		if (beanFactory instanceof ConfigurableBeanFactory configurableBeanFactory) {
-			this.embeddedValueResolver = new EmbeddedValueResolver(configurableBeanFactory);
-		}
 	}
 
 
 	/**
 	 * Determine the specific executor to use when executing the given method.
+	 * Should preferably return an {@link AsyncListenableTaskExecutor} implementation.
 	 * @return the executor to use (or {@code null}, but just if no default executor is available)
 	 */
 	@Nullable
@@ -170,9 +165,6 @@ public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
 		if (executor == null) {
 			Executor targetExecutor;
 			String qualifier = getExecutorQualifier(method);
-			if (this.embeddedValueResolver != null && StringUtils.hasLength(qualifier)) {
-				qualifier = this.embeddedValueResolver.resolveStringValue(qualifier);
-			}
 			if (StringUtils.hasLength(qualifier)) {
 				targetExecutor = findQualifiedExecutor(this.beanFactory, qualifier);
 			}
@@ -182,8 +174,8 @@ public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
 			if (targetExecutor == null) {
 				return null;
 			}
-			executor = (targetExecutor instanceof AsyncTaskExecutor ?
-					(AsyncTaskExecutor) targetExecutor : new TaskExecutorAdapter(targetExecutor));
+			executor = (targetExecutor instanceof AsyncListenableTaskExecutor ?
+					(AsyncListenableTaskExecutor) targetExecutor : new TaskExecutorAdapter(targetExecutor));
 			this.executors.put(method, executor);
 		}
 		return executor;
@@ -192,7 +184,7 @@ public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
 	/**
 	 * Return the qualifier or bean name of the executor to be used when executing the
 	 * given async method, typically specified in the form of an annotation attribute.
-	 * <p>Returning an empty string or {@code null} indicates that no specific executor has
+	 * Returning an empty string or {@code null} indicates that no specific executor has
 	 * been specified and that the {@linkplain #setExecutor(Executor) default executor}
 	 * should be used.
 	 * @param method the method to inspect for executor qualifier metadata
@@ -221,7 +213,7 @@ public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
 
 	/**
 	 * Retrieve or build a default executor for this advice instance.
-	 * <p>An executor returned from here will be cached for further use.
+	 * An executor returned from here will be cached for further use.
 	 * <p>The default implementation searches for a unique {@link TaskExecutor} bean
 	 * in the context, or for an {@link Executor} bean named "taskExecutor" otherwise.
 	 * If neither of the two is resolvable, this implementation will return {@code null}.
@@ -279,24 +271,26 @@ public abstract class AsyncExecutionAspectSupport implements BeanFactoryAware {
 	 * @return the execution result (potentially a corresponding {@link Future} handle)
 	 */
 	@Nullable
-	@SuppressWarnings("deprecation")
 	protected Object doSubmit(Callable<Object> task, AsyncTaskExecutor executor, Class<?> returnType) {
 		if (CompletableFuture.class.isAssignableFrom(returnType)) {
-			return executor.submitCompletable(task);
+			return CompletableFuture.supplyAsync(() -> {
+				try {
+					return task.call();
+				}
+				catch (Throwable ex) {
+					throw new CompletionException(ex);
+				}
+			}, executor);
 		}
-		else if (org.springframework.util.concurrent.ListenableFuture.class.isAssignableFrom(returnType)) {
-			return ((org.springframework.core.task.AsyncListenableTaskExecutor) executor).submitListenable(task);
+		else if (ListenableFuture.class.isAssignableFrom(returnType)) {
+			return ((AsyncListenableTaskExecutor) executor).submitListenable(task);
 		}
 		else if (Future.class.isAssignableFrom(returnType)) {
 			return executor.submit(task);
 		}
-		else if (void.class == returnType) {
+		else {
 			executor.submit(task);
 			return null;
-		}
-		else {
-			throw new IllegalArgumentException(
-					"Invalid return type for async method (only Future and void supported): " + returnType);
 		}
 	}
 

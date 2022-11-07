@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,6 @@ import org.apache.commons.logging.LogFactory;
 
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.core.annotation.AnnotationAttributes;
-import org.springframework.core.style.DefaultToStringStyler;
-import org.springframework.core.style.SimpleValueStyler;
 import org.springframework.core.style.ToStringCreator;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -337,9 +335,10 @@ public class ContextConfigurationAttributes {
 		if (this == other) {
 			return true;
 		}
-		if (!(other instanceof ContextConfigurationAttributes otherAttr)) {
+		if (!(other instanceof ContextConfigurationAttributes)) {
 			return false;
 		}
+		ContextConfigurationAttributes otherAttr = (ContextConfigurationAttributes) other;
 		return (ObjectUtils.nullSafeEquals(this.declaringClass, otherAttr.declaringClass) &&
 				Arrays.equals(this.classes, otherAttr.classes)) &&
 				Arrays.equals(this.locations, otherAttr.locations) &&
@@ -370,15 +369,15 @@ public class ContextConfigurationAttributes {
 	 */
 	@Override
 	public String toString() {
-		return new ToStringCreator(this, new DefaultToStringStyler(new SimpleValueStyler()))
-				.append("declaringClass", this.declaringClass)
-				.append("classes", this.classes)
-				.append("locations", this.locations)
+		return new ToStringCreator(this)
+				.append("declaringClass", this.declaringClass.getName())
+				.append("classes", ObjectUtils.nullSafeToString(this.classes))
+				.append("locations", ObjectUtils.nullSafeToString(this.locations))
 				.append("inheritLocations", this.inheritLocations)
-				.append("initializers", this.initializers)
+				.append("initializers", ObjectUtils.nullSafeToString(this.initializers))
 				.append("inheritInitializers", this.inheritInitializers)
 				.append("name", this.name)
-				.append("contextLoaderClass", this.contextLoaderClass)
+				.append("contextLoaderClass", this.contextLoaderClass.getName())
 				.toString();
 	}
 

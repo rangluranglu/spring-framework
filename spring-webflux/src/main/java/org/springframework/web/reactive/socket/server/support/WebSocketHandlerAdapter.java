@@ -18,7 +18,6 @@ package org.springframework.web.reactive.socket.server.support;
 
 import reactor.core.publisher.Mono;
 
-import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.core.Ordered;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.HandlerAdapter;
@@ -46,7 +45,6 @@ import org.springframework.web.server.ServerWebExchange;
  * @author Rossen Stoyanchev
  * @since 5.0
  */
-@ImportRuntimeHints(HandshakeWebSocketServiceRuntimeHints.class)
 public class WebSocketHandlerAdapter implements HandlerAdapter, Ordered {
 
 	private final WebSocketService webSocketService;

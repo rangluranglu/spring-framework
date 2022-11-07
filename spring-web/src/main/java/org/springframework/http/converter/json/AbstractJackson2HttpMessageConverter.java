@@ -53,7 +53,6 @@ import org.springframework.core.GenericTypeResolver;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
-import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.AbstractGenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -76,7 +75,6 @@ import org.springframework.util.TypeUtils;
  * @author Rossen Stoyanchev
  * @author Juergen Hoeller
  * @author Sebastien Deleuze
- * @author Sam Brannen
  * @since 4.1
  * @see MappingJackson2HttpMessageConverter
  */
@@ -93,7 +91,13 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 	}
 
 
-	private List<MediaType> problemDetailMediaTypes = Collections.singletonList(MediaType.APPLICATION_PROBLEM_JSON);
+	/**
+	 * The default charset used by the converter.
+	 */
+	@Nullable
+	@Deprecated
+	public static final Charset DEFAULT_CHARSET = null;
+
 
 	protected ObjectMapper defaultObjectMapper;
 
@@ -104,7 +108,7 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 	private Boolean prettyPrint;
 
 	@Nullable
-	private final PrettyPrinter ssePrettyPrinter;
+	private PrettyPrinter ssePrettyPrinter;
 
 
 	protected AbstractJackson2HttpMessageConverter(ObjectMapper objectMapper) {
@@ -124,19 +128,6 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 		setSupportedMediaTypes(Arrays.asList(supportedMediaTypes));
 	}
 
-
-	@Override
-	public void setSupportedMediaTypes(List<MediaType> supportedMediaTypes) {
-		this.problemDetailMediaTypes = initProblemDetailMediaTypes(supportedMediaTypes);
-		super.setSupportedMediaTypes(supportedMediaTypes);
-	}
-
-	private List<MediaType> initProblemDetailMediaTypes(List<MediaType> supportedMediaTypes) {
-		List<MediaType> mediaTypes = new ArrayList<>();
-		mediaTypes.add(MediaType.APPLICATION_PROBLEM_JSON);
-		mediaTypes.addAll(supportedMediaTypes);
-		return Collections.unmodifiableList(mediaTypes);
-	}
 
 	/**
 	 * Configure the main {@code ObjectMapper} to use for Object conversion.
@@ -214,11 +205,7 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 				result.addAll(entry.getValue().keySet());
 			}
 		}
-		if (!CollectionUtils.isEmpty(result)) {
-			return result;
-		}
-		return (ProblemDetail.class.isAssignableFrom(clazz) ?
-				this.problemDetailMediaTypes : getSupportedMediaTypes());
+		return (CollectionUtils.isEmpty(result) ? getSupportedMediaTypes() : result);
 	}
 
 	private Map<Class<?>, Map<MediaType, ObjectMapper>> getObjectMapperRegistrations() {
@@ -369,18 +356,17 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 		Charset charset = getCharset(contentType);
 
 		ObjectMapper objectMapper = selectObjectMapper(javaType.getRawClass(), contentType);
-		Assert.state(objectMapper != null, "No ObjectMapper for " + javaType);
+		Assert.state(objectMapper != null, () -> "No ObjectMapper for " + javaType);
 
 		boolean isUnicode = ENCODINGS.containsKey(charset.name()) ||
 				"UTF-16".equals(charset.name()) ||
 				"UTF-32".equals(charset.name());
 		try {
 			InputStream inputStream = StreamUtils.nonClosing(inputMessage.getBody());
-			if (inputMessage instanceof MappingJacksonInputMessage mappingJacksonInputMessage) {
-				Class<?> deserializationView = mappingJacksonInputMessage.getDeserializationView();
+			if (inputMessage instanceof MappingJacksonInputMessage) {
+				Class<?> deserializationView = ((MappingJacksonInputMessage) inputMessage).getDeserializationView();
 				if (deserializationView != null) {
 					ObjectReader objectReader = objectMapper.readerWithView(deserializationView).forType(javaType);
-					objectReader = customizeReader(objectReader, javaType);
 					if (isUnicode) {
 						return objectReader.readValue(inputStream);
 					}
@@ -390,15 +376,12 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 					}
 				}
 			}
-
-			ObjectReader objectReader = objectMapper.reader().forType(javaType);
-			objectReader = customizeReader(objectReader, javaType);
 			if (isUnicode) {
-				return objectReader.readValue(inputStream);
+				return objectMapper.readValue(inputStream, javaType);
 			}
 			else {
 				Reader reader = new InputStreamReader(inputStream, charset);
-				return objectReader.readValue(reader);
+				return objectMapper.readValue(reader, javaType);
 			}
 		}
 		catch (InvalidDefinitionException ex) {
@@ -407,18 +390,6 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 		catch (JsonProcessingException ex) {
 			throw new HttpMessageNotReadableException("JSON parse error: " + ex.getOriginalMessage(), ex, inputMessage);
 		}
-	}
-
-	/**
-	 * Subclasses can use this method to customize {@link ObjectReader} used
-	 * for reading values.
-	 * @param reader the reader instance to customize
-	 * @param javaType the target type of element values to read to
-	 * @return the customized {@link ObjectReader}
-	 * @since 6.0
-	 */
-	protected ObjectReader customizeReader(ObjectReader reader, JavaType javaType) {
-		return reader;
 	}
 
 	/**
@@ -445,10 +416,10 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 		MediaType contentType = outputMessage.getHeaders().getContentType();
 		JsonEncoding encoding = getJsonEncoding(contentType);
 
-		Class<?> clazz = (object instanceof MappingJacksonValue mappingJacksonValue ?
-				mappingJacksonValue.getValue().getClass() : object.getClass());
+		Class<?> clazz = (object instanceof MappingJacksonValue ?
+				((MappingJacksonValue) object).getValue().getClass() : object.getClass());
 		ObjectMapper objectMapper = selectObjectMapper(clazz, contentType);
-		Assert.state(objectMapper != null, "No ObjectMapper for " + clazz.getName());
+		Assert.state(objectMapper != null, () -> "No ObjectMapper for " + clazz.getName());
 
 		OutputStream outputStream = StreamUtils.nonClosing(outputMessage.getBody());
 		try (JsonGenerator generator = objectMapper.getFactory().createGenerator(outputStream, encoding)) {
@@ -459,10 +430,11 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 			FilterProvider filters = null;
 			JavaType javaType = null;
 
-			if (object instanceof MappingJacksonValue mappingJacksonValue) {
-				value = mappingJacksonValue.getValue();
-				serializationView = mappingJacksonValue.getSerializationView();
-				filters = mappingJacksonValue.getFilters();
+			if (object instanceof MappingJacksonValue) {
+				MappingJacksonValue container = (MappingJacksonValue) object;
+				value = container.getValue();
+				serializationView = container.getSerializationView();
+				filters = container.getFilters();
 			}
 			if (type != null && TypeUtils.isAssignable(type, value.getClass())) {
 				javaType = getJavaType(type, null);
@@ -481,7 +453,6 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 					config.isEnabled(SerializationFeature.INDENT_OUTPUT)) {
 				objectWriter = objectWriter.with(this.ssePrettyPrinter);
 			}
-			objectWriter = customizeWriter(objectWriter, javaType, contentType);
 			objectWriter.writeValue(generator, value);
 
 			writeSuffix(generator, object);
@@ -493,21 +464,6 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 		catch (JsonProcessingException ex) {
 			throw new HttpMessageNotWritableException("Could not write JSON: " + ex.getOriginalMessage(), ex);
 		}
-	}
-
-	/**
-	 * Subclasses can use this method to customize {@link ObjectWriter} used
-	 * for writing values.
-	 * @param writer the writer instance to customize
-	 * @param javaType the type of element values to write
-	 * @param contentType the selected media type
-	 * @return the customized {@link ObjectWriter}
-	 * @since 6.0
-	 */
-	protected ObjectWriter customizeWriter(
-			ObjectWriter writer, @Nullable JavaType javaType, @Nullable MediaType contentType) {
-
-		return writer;
 	}
 
 	/**
@@ -556,16 +512,16 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 	@Override
 	@Nullable
 	protected MediaType getDefaultContentType(Object object) throws IOException {
-		if (object instanceof MappingJacksonValue mappingJacksonValue) {
-			object = mappingJacksonValue.getValue();
+		if (object instanceof MappingJacksonValue) {
+			object = ((MappingJacksonValue) object).getValue();
 		}
 		return super.getDefaultContentType(object);
 	}
 
 	@Override
 	protected Long getContentLength(Object object, @Nullable MediaType contentType) throws IOException {
-		if (object instanceof MappingJacksonValue mappingJacksonValue) {
-			object = mappingJacksonValue.getValue();
+		if (object instanceof MappingJacksonValue) {
+			object = ((MappingJacksonValue) object).getValue();
 		}
 		return super.getContentLength(object, contentType);
 	}

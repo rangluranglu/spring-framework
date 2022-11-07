@@ -35,7 +35,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -90,8 +90,14 @@ public class ServletServerHttpRequest implements ServerHttpRequest {
 	}
 
 	@Override
+	@Nullable
 	public HttpMethod getMethod() {
-		return HttpMethod.valueOf(this.servletRequest.getMethod());
+		return HttpMethod.resolve(this.servletRequest.getMethod());
+	}
+
+	@Override
+	public String getMethodValue() {
+		return this.servletRequest.getMethod();
 	}
 
 	@Override
@@ -210,10 +216,11 @@ public class ServletServerHttpRequest implements ServerHttpRequest {
 	@Override
 	public ServerHttpAsyncRequestControl getAsyncRequestControl(ServerHttpResponse response) {
 		if (this.asyncRequestControl == null) {
-			if (!(response instanceof ServletServerHttpResponse servletServerResponse)) {
+			if (!(response instanceof ServletServerHttpResponse)) {
 				throw new IllegalArgumentException(
 						"Response must be a ServletServerHttpResponse: " + response.getClass());
 			}
+			ServletServerHttpResponse servletServerResponse = (ServletServerHttpResponse) response;
 			this.asyncRequestControl = new ServletServerHttpAsyncRequestControl(this, servletServerResponse);
 		}
 		return this.asyncRequestControl;
@@ -227,7 +234,7 @@ public class ServletServerHttpRequest implements ServerHttpRequest {
 	}
 
 	/**
-	 * Use {@link jakarta.servlet.ServletRequest#getParameterMap()} to reconstruct the
+	 * Use {@link javax.servlet.ServletRequest#getParameterMap()} to reconstruct the
 	 * body of a form 'POST' providing a predictable outcome as opposed to reading
 	 * from the body, which can fail if any other code has used the ServletRequest
 	 * to access a parameter, thus causing the input stream to be "consumed".
@@ -243,10 +250,10 @@ public class ServletServerHttpRequest implements ServerHttpRequest {
 			List<String> values = Arrays.asList(entry.getValue());
 			for (Iterator<String> valueIterator = values.iterator(); valueIterator.hasNext();) {
 				String value = valueIterator.next();
-				writer.write(URLEncoder.encode(name, FORM_CHARSET));
+				writer.write(URLEncoder.encode(name, FORM_CHARSET.name()));
 				if (value != null) {
 					writer.write('=');
-					writer.write(URLEncoder.encode(value, FORM_CHARSET));
+					writer.write(URLEncoder.encode(value, FORM_CHARSET.name()));
 					if (valueIterator.hasNext()) {
 						writer.write('&');
 					}

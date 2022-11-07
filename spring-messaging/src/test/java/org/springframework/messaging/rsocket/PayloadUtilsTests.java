@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,24 +37,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for {@link PayloadUtils}.
- *
  * @author Rossen Stoyanchev
  * @since 5.2
  */
-class PayloadUtilsTests {
+public class PayloadUtilsTests {
 
 	private LeakAwareNettyDataBufferFactory nettyBufferFactory =
 			new LeakAwareNettyDataBufferFactory(PooledByteBufAllocator.DEFAULT);
 
 
 	@AfterEach
-	void tearDown() throws Exception {
+	public void tearDown() throws Exception {
 		this.nettyBufferFactory.checkForLeaks(Duration.ofSeconds(5));
 	}
 
 
 	@Test
-	void retainAndReleaseWithNettyFactory() {
+	public void retainAndReleaseWithNettyFactory() {
 		Payload payload = ByteBufPayload.create("sample data");
 		DataBuffer buffer = PayloadUtils.retainDataAndReleasePayload(payload, this.nettyBufferFactory);
 		try {
@@ -68,7 +67,7 @@ class PayloadUtilsTests {
 	}
 
 	@Test
-	void retainAndReleaseWithDefaultFactory() {
+	public void retainAndReleaseWithDefaultFactory() {
 		Payload payload = ByteBufPayload.create("sample data");
 		DataBuffer buffer = PayloadUtils.retainDataAndReleasePayload(payload, DefaultDataBufferFactory.sharedInstance);
 
@@ -77,7 +76,7 @@ class PayloadUtilsTests {
 	}
 
 	@Test
-	void createWithNettyBuffers() {
+	public void createWithNettyBuffers() {
 		NettyDataBuffer data = createNettyDataBuffer("sample data");
 		NettyDataBuffer metadata = createNettyDataBuffer("sample metadata");
 
@@ -93,7 +92,7 @@ class PayloadUtilsTests {
 	}
 
 	@Test
-	void createWithDefaultBuffers() {
+	public void createWithDefaultBuffers() {
 		DataBuffer data = createDefaultDataBuffer("sample data");
 		DataBuffer metadata = createDefaultDataBuffer("sample metadata");
 		Payload payload = PayloadUtils.createPayload(data, metadata);
@@ -104,7 +103,7 @@ class PayloadUtilsTests {
 	}
 
 	@Test
-	void createWithNettyAndDefaultBuffers() {
+	public void createWithNettyAndDefaultBuffers() {
 		NettyDataBuffer data = createNettyDataBuffer("sample data");
 		DefaultDataBuffer metadata = createDefaultDataBuffer("sample metadata");
 		Payload payload = PayloadUtils.createPayload(data, metadata);
@@ -119,7 +118,7 @@ class PayloadUtilsTests {
 	}
 
 	@Test
-	void createWithDefaultAndNettyBuffers() {
+	public void createWithDefaultAndNettyBuffers() {
 		DefaultDataBuffer data = createDefaultDataBuffer("sample data");
 		NettyDataBuffer metadata = createNettyDataBuffer("sample metadata");
 		Payload payload = PayloadUtils.createPayload(data, metadata);
@@ -134,7 +133,7 @@ class PayloadUtilsTests {
 	}
 
 	@Test
-	void createWithNettyBuffer() {
+	public void createWithNettyBuffer() {
 		NettyDataBuffer data = createNettyDataBuffer("sample data");
 		Payload payload = PayloadUtils.createPayload(data);
 		try {
@@ -147,7 +146,7 @@ class PayloadUtilsTests {
 	}
 
 	@Test
-	void createWithDefaultBuffer() {
+	public void createWithDefaultBuffer() {
 		DataBuffer data = createDefaultDataBuffer("sample data");
 		Payload payload = PayloadUtils.createPayload(data);
 
@@ -163,7 +162,7 @@ class PayloadUtilsTests {
 	}
 
 	private DefaultDataBuffer createDefaultDataBuffer(String content) {
-		DefaultDataBuffer buffer = DefaultDataBufferFactory.sharedInstance.allocateBuffer(256);
+		DefaultDataBuffer buffer = DefaultDataBufferFactory.sharedInstance.allocateBuffer();
 		buffer.write(content, StandardCharsets.UTF_8);
 		return buffer;
 	}

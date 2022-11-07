@@ -168,7 +168,7 @@ public final class CloseStatus implements Serializable {
 	 * @param reason the reason
 	 */
 	public CloseStatus(int code, @Nullable String reason) {
-		Assert.isTrue((code >= 1000 && code < 5000), "Invalid status code");
+		Assert.isTrue((code >= 1000 && code < 5000), () -> "Invalid status code: " + code);
 		this.code = code;
 		this.reason = reason;
 	}
@@ -209,9 +209,10 @@ public final class CloseStatus implements Serializable {
 		if (this == other) {
 			return true;
 		}
-		if (!(other instanceof CloseStatus otherStatus)) {
+		if (!(other instanceof CloseStatus)) {
 			return false;
 		}
+		CloseStatus otherStatus = (CloseStatus) other;
 		return (this.code == otherStatus.code && ObjectUtils.nullSafeEquals(this.reason, otherStatus.reason));
 	}
 

@@ -74,8 +74,7 @@ public class AnnotationDrivenBeanDefinitionParserTests {
 				((ConfigurableWebBindingInitializer) initializer).getMessageCodesResolver();
 		assertThat(resolver).isNotNull();
 		assertThat(resolver.getClass()).isEqualTo(TestMessageCodesResolver.class);
-		assertThat(new DirectFieldAccessor(adapter).getPropertyValue("ignoreDefaultModelOnRedirect"))
-				.asInstanceOf(BOOLEAN).isTrue();
+		assertThat(new DirectFieldAccessor(adapter).getPropertyValue("ignoreDefaultModelOnRedirect")).asInstanceOf(BOOLEAN).isFalse();
 	}
 
 	@Test

@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -47,7 +49,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 /**
  * @author Juergen Hoeller
  * @author Chris Beams
- * @author Sam Brannen
  */
 public class ClassPathXmlApplicationContextTests {
 
@@ -216,13 +217,13 @@ public class ClassPathXmlApplicationContextTests {
 
 	@Test
 	void resourceArrayPropertyEditor() throws IOException {
-		Resource contextA = new FileSystemResource(new ClassPathResource(FQ_CONTEXT_A).getFile());
-		Resource contextB = new FileSystemResource(new ClassPathResource(FQ_CONTEXT_B).getFile());
-		Resource contextC = new FileSystemResource(new ClassPathResource(FQ_CONTEXT_C).getFile());
-
 		ClassPathXmlApplicationContext ctx = new ClassPathXmlApplicationContext(CONTEXT_WILDCARD);
-		Service service = ctx.getBean("service", Service.class);
-		assertThat(service.getResources()).containsExactlyInAnyOrder(contextA, contextB, contextC);
+		Service service = (Service) ctx.getBean("service");
+		assertThat(service.getResources().length).isEqualTo(3);
+		List<Resource> resources = Arrays.asList(service.getResources());
+		assertThat(resources.contains(new FileSystemResource(new ClassPathResource(FQ_CONTEXT_A).getFile()))).isTrue();
+		assertThat(resources.contains(new FileSystemResource(new ClassPathResource(FQ_CONTEXT_B).getFile()))).isTrue();
+		assertThat(resources.contains(new FileSystemResource(new ClassPathResource(FQ_CONTEXT_C).getFile()))).isTrue();
 		ctx.close();
 	}
 

@@ -16,7 +16,7 @@
 
 package org.springframework.web.socket.sockjs.transport.handler;
 
-import java.time.Instant;
+import java.util.Date;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ import static org.mockito.Mockito.verify;
  *
  * @author Rossen Stoyanchev
  */
-class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
+public class HttpSendingTransportHandlerTests  extends AbstractHttpRequestTests {
 
 	private WebSocketHandler webSocketHandler;
 
@@ -51,7 +51,7 @@ class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
 
 	@Override
 	@BeforeEach
-	protected void setup() {
+	public void setup() {
 		super.setup();
 
 		this.webSocketHandler = mock(WebSocketHandler.class);
@@ -65,7 +65,7 @@ class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
 
 
 	@Test
-	void handleRequestXhr() throws Exception {
+	public void handleRequestXhr() throws Exception {
 		XhrPollingTransportHandler transportHandler = new XhrPollingTransportHandler();
 		transportHandler.initialize(this.sockJsConfig);
 
@@ -81,7 +81,7 @@ class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
 		transportHandler.handleRequest(this.request, this.response, this.webSocketHandler, session);
 
 		assertThat(this.servletRequest.isAsyncStarted()).as("Polling request should remain open").isTrue();
-		verify(this.taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+		verify(this.taskScheduler).schedule(any(Runnable.class), any(Date.class));
 
 		resetRequestAndResponse();
 		transportHandler.handleRequest(this.request, this.response, this.webSocketHandler, session);
@@ -91,7 +91,7 @@ class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
 	}
 
 	@Test
-	void handleRequestXhrStreaming() throws Exception {
+	public void handleRequestXhrStreaming() throws Exception {
 		XhrStreamingTransportHandler transportHandler = new XhrStreamingTransportHandler();
 		transportHandler.initialize(this.sockJsConfig);
 		AbstractSockJsSession session = transportHandler.createSession("1", this.webSocketHandler, null);
@@ -104,7 +104,7 @@ class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
 	}
 
 	@Test
-	void htmlFileTransport() throws Exception {
+	public void htmlFileTransport() throws Exception {
 		HtmlFileTransportHandler transportHandler = new HtmlFileTransportHandler();
 		transportHandler.initialize(this.sockJsConfig);
 		StreamingSockJsSession session = transportHandler.createSession("1", this.webSocketHandler, null);
@@ -126,7 +126,7 @@ class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
 	}
 
 	@Test
-	void eventSourceTransport() throws Exception {
+	public void eventSourceTransport() throws Exception {
 		EventSourceTransportHandler transportHandler = new EventSourceTransportHandler();
 		transportHandler.initialize(this.sockJsConfig);
 		StreamingSockJsSession session = transportHandler.createSession("1", this.webSocketHandler, null);
@@ -139,7 +139,7 @@ class HttpSendingTransportHandlerTests extends AbstractHttpRequestTests {
 	}
 
 	@Test
-	void frameFormats() throws Exception {
+	public void frameFormats() throws Exception {
 		this.servletRequest.setQueryString("c=callback");
 		this.servletRequest.addParameter("c", "callback");
 

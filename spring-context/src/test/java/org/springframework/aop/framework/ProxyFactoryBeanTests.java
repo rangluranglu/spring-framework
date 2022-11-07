@@ -92,7 +92,7 @@ public class ProxyFactoryBeanTests {
 
 
 	@BeforeEach
-	public void setup() throws Exception {
+	public void setUp() throws Exception {
 		DefaultListableBeanFactory parent = new DefaultListableBeanFactory();
 		parent.registerBeanDefinition("target2", new RootBeanDefinition(TestApplicationListener.class));
 		this.factory = new DefaultListableBeanFactory(parent);
@@ -473,8 +473,8 @@ public class ProxyFactoryBeanTests {
 	public void testEmptyInterceptorNames() {
 		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(bf).loadBeanDefinitions(new ClassPathResource(INVALID_CONTEXT, CLASS));
-		assertThat(bf.getBean("emptyInterceptorNames")).isInstanceOf(ITestBean.class);
-		assertThat(Proxy.isProxyClass(bf.getBean("emptyInterceptorNames").getClass())).isTrue();
+		assertThatExceptionOfType(BeanCreationException.class).as("Interceptor names cannot be empty").isThrownBy(() ->
+				bf.getBean("emptyInterceptorNames"));
 	}
 
 	/**
@@ -708,7 +708,6 @@ public class ProxyFactoryBeanTests {
 			this.tb = tb;
 		}
 	}
-
 
 	/**
 	 * Aspect interface

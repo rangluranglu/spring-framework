@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +34,6 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.observation.ServerRequestObservationContext;
 import org.springframework.http.server.RequestPath;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Controller;
@@ -47,7 +47,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.support.StaticWebApplicationContext;
-import org.springframework.web.filter.ServerHttpObservationFilter;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.method.support.InvocableHandlerMethod;
 import org.springframework.web.method.support.ModelAndViewContainer;
@@ -57,9 +56,9 @@ import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.handler.MappedInterceptor;
 import org.springframework.web.servlet.handler.PathPatternsParameterizedTest;
 import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
-import org.springframework.web.testfixture.servlet.MockHttpServletResponse;
 import org.springframework.web.util.ServletRequestPathUtils;
 import org.springframework.web.util.UrlPathHelper;
+import org.springframework.web.util.pattern.PathPatternParser;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -77,12 +76,10 @@ class RequestMappingInfoHandlerMappingTests {
 		TestController controller = new TestController();
 
 		TestRequestMappingInfoHandlerMapping mapping1 = new TestRequestMappingInfoHandlerMapping();
-
-		UrlPathHelper pathHelper = new UrlPathHelper();
-		pathHelper.setRemoveSemicolonContent(false);
+		mapping1.setPatternParser(new PathPatternParser());
 
 		TestRequestMappingInfoHandlerMapping mapping2 = new TestRequestMappingInfoHandlerMapping();
-		mapping2.setUrlPathHelper(pathHelper);
+		mapping2.setRemoveSemicolonContent(false);
 
 		return Stream.of(mapping1, mapping2).peek(mapping -> {
 			mapping.setApplicationContext(new StaticWebApplicationContext());
@@ -141,6 +138,11 @@ class RequestMappingInfoHandlerMappingTests {
 		HandlerMethod handlerMethod = getHandler(mapping, request);
 
 		assertThat(handlerMethod.getMethod()).isEqualTo(this.emptyMethod.getMethod());
+
+		request = new MockHttpServletRequest("GET", "/");
+		handlerMethod = getHandler(mapping, request);
+
+		assertThat(handlerMethod.getMethod()).isEqualTo(this.emptyMethod.getMethod());
 	}
 
 	@PathPatternsParameterizedTest
@@ -172,6 +174,7 @@ class RequestMappingInfoHandlerMappingTests {
 	@PathPatternsParameterizedTest // SPR-8462
 	void getHandlerMediaTypeNotSupported(TestRequestMappingInfoHandlerMapping mapping) {
 		testHttpMediaTypeNotSupportedException(mapping, "/person/1");
+		testHttpMediaTypeNotSupportedException(mapping, "/person/1/");
 		testHttpMediaTypeNotSupportedException(mapping, "/person/1.json");
 	}
 
@@ -196,6 +199,7 @@ class RequestMappingInfoHandlerMappingTests {
 	@PathPatternsParameterizedTest // SPR-8462
 	void getHandlerMediaTypeNotAccepted(TestRequestMappingInfoHandlerMapping mapping) {
 		testHttpMediaTypeNotAcceptableException(mapping, "/persons");
+		testHttpMediaTypeNotAcceptableException(mapping, "/persons/");
 		if (mapping.getPatternParser() == null) {
 			testHttpMediaTypeNotAcceptableException(mapping, "/persons.json");
 		}
@@ -289,18 +293,6 @@ class RequestMappingInfoHandlerMappingTests {
 		mapping.handleMatch(key, "/1/2", request);
 
 		assertThat(request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE)).isEqualTo("/{path1}/2");
-	}
-
-	@PathPatternsParameterizedTest
-	void handleMatchBestMatchingPatternAttributeInObservationContext(TestRequestMappingInfoHandlerMapping mapping) {
-		RequestMappingInfo key = RequestMappingInfo.paths("/{path1}/2", "/**").build();
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/1/2");
-		ServerRequestObservationContext observationContext = new ServerRequestObservationContext(request, new MockHttpServletResponse());
-		request.setAttribute(ServerHttpObservationFilter.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observationContext);
-		mapping.handleMatch(key, "/1/2", request);
-
-		assertThat(request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE)).isEqualTo("/{path1}/2");
-		assertThat(observationContext.getPathPattern()).isEqualTo("/{path1}/2");
 	}
 
 	@PathPatternsParameterizedTest // gh-22543

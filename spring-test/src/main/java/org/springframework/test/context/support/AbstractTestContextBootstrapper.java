@@ -31,6 +31,7 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.BeanUtils;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.core.io.support.SpringFactoriesLoader;
 import org.springframework.lang.Nullable;
 import org.springframework.test.context.BootstrapContext;
 import org.springframework.test.context.CacheAwareContextLoaderDelegate;
@@ -49,7 +50,6 @@ import org.springframework.test.context.TestContextBootstrapper;
 import org.springframework.test.context.TestExecutionListener;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.TestExecutionListeners.MergeMode;
-import org.springframework.test.context.util.TestContextSpringFactoriesUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
@@ -112,7 +112,7 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 	public final List<TestExecutionListener> getTestExecutionListeners() {
 		Class<?> clazz = getBootstrapContext().getTestClass();
 		Class<TestExecutionListeners> annotationType = TestExecutionListeners.class;
-		List<TestExecutionListener> listeners = new ArrayList<>(8);
+		List<Class<? extends TestExecutionListener>> classesList = new ArrayList<>();
 		boolean usingDefaults = false;
 
 		AnnotationDescriptor<TestExecutionListeners> descriptor =
@@ -120,12 +120,12 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 
 		// Use defaults?
 		if (descriptor == null) {
-			if (logger.isTraceEnabled()) {
-				logger.trace(String.format("@TestExecutionListeners is not present for class [%s]: using defaults.",
+			if (logger.isDebugEnabled()) {
+				logger.debug(String.format("@TestExecutionListeners is not present for class [%s]: using defaults.",
 						clazz.getName()));
 			}
 			usingDefaults = true;
-			listeners.addAll(getDefaultTestExecutionListeners());
+			classesList.addAll(getDefaultTestExecutionListenerClasses());
 		}
 		else {
 			// Traverse the class hierarchy...
@@ -144,77 +144,53 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 				// locally declared listeners with the defaults.
 				if ((!inheritListeners || parentDescriptor == null) &&
 						testExecutionListeners.mergeMode() == MergeMode.MERGE_WITH_DEFAULTS) {
-					if (logger.isTraceEnabled()) {
-						logger.trace(String.format("Merging default listeners with listeners configured via " +
+					if (logger.isDebugEnabled()) {
+						logger.debug(String.format("Merging default listeners with listeners configured via " +
 								"@TestExecutionListeners for class [%s].", descriptor.getRootDeclaringClass().getName()));
 					}
 					usingDefaults = true;
-					listeners.addAll(getDefaultTestExecutionListeners());
+					classesList.addAll(getDefaultTestExecutionListenerClasses());
 				}
 
-				listeners.addAll(0, instantiateListeners(testExecutionListeners.listeners()));
+				classesList.addAll(0, Arrays.asList(testExecutionListeners.listeners()));
 
 				descriptor = (inheritListeners ? parentDescriptor : null);
 			}
 		}
 
+		Collection<Class<? extends TestExecutionListener>> classesToUse = classesList;
+		// Remove possible duplicates if we loaded default listeners.
 		if (usingDefaults) {
-			// Remove possible duplicates if we loaded default listeners.
-			List<TestExecutionListener> uniqueListeners = new ArrayList<>(listeners.size());
-			listeners.forEach(listener -> {
-				Class<? extends TestExecutionListener> listenerClass = listener.getClass();
-				if (uniqueListeners.stream().map(Object::getClass).noneMatch(listenerClass::equals)) {
-					uniqueListeners.add(listener);
-				}
-			});
-			listeners = uniqueListeners;
+			classesToUse = new LinkedHashSet<>(classesList);
+		}
 
-			// Sort by Ordered/@Order if we loaded default listeners.
+		List<TestExecutionListener> listeners = instantiateListeners(classesToUse);
+		// Sort by Ordered/@Order if we loaded default listeners.
+		if (usingDefaults) {
 			AnnotationAwareOrderComparator.sort(listeners);
 		}
 
-		if (logger.isTraceEnabled()) {
-			logger.trace("Using TestExecutionListeners for test class [%s]: %s"
-					.formatted(clazz.getName(), listeners));
-		}
-		else if (logger.isDebugEnabled()) {
-			logger.debug("Using TestExecutionListeners for test class [%s]: %s"
-					.formatted(clazz.getSimpleName(), classSimpleNames(listeners)));
+		if (logger.isInfoEnabled()) {
+			logger.info("Using TestExecutionListeners: " + listeners);
 		}
 		return listeners;
 	}
 
-	/**
-	 * Get the default {@link TestExecutionListener TestExecutionListeners} for
-	 * this bootstrapper.
-	 * <p>The default implementation delegates to
-	 * {@link TestContextSpringFactoriesUtils#loadFactoryImplementations(Class)}.
-	 * <p>This method is invoked by {@link #getTestExecutionListeners()}.
-	 * @return an <em>unmodifiable</em> list of default {@code TestExecutionListener}
-	 * instances
-	 * @since 6.0
-	 */
-	protected List<TestExecutionListener> getDefaultTestExecutionListeners() {
-		return TestContextSpringFactoriesUtils.loadFactoryImplementations(TestExecutionListener.class);
-	}
-
-	@SuppressWarnings("unchecked")
-	private List<TestExecutionListener> instantiateListeners(Class<? extends TestExecutionListener>... classes) {
-		List<TestExecutionListener> listeners = new ArrayList<>(classes.length);
+	private List<TestExecutionListener> instantiateListeners(Collection<Class<? extends TestExecutionListener>> classes) {
+		List<TestExecutionListener> listeners = new ArrayList<>(classes.size());
 		for (Class<? extends TestExecutionListener> listenerClass : classes) {
 			try {
 				listeners.add(BeanUtils.instantiateClass(listenerClass));
 			}
 			catch (BeanInstantiationException ex) {
-				Throwable cause = ex.getCause();
-				if (cause instanceof ClassNotFoundException || cause instanceof NoClassDefFoundError) {
+				if (ex.getCause() instanceof NoClassDefFoundError) {
+					// TestExecutionListener not applicable due to a missing dependency
 					if (logger.isDebugEnabled()) {
-						logger.debug("""
-								Skipping candidate %1$s [%2$s] due to a missing dependency. \
-								Specify custom %1$s classes or make the default %1$s classes \
-								and their required dependencies available. Offending class: [%3$s]"""
-									.formatted(TestExecutionListener.class.getSimpleName(), listenerClass.getName(),
-										cause.getMessage()));
+						logger.debug(String.format(
+								"Skipping candidate TestExecutionListener [%s] due to a missing dependency. " +
+								"Specify custom listener classes or make the default listener classes " +
+								"and their required dependencies available. Offending class: [%s]",
+								listenerClass.getName(), ex.getCause().getMessage()));
 					}
 				}
 				else {
@@ -223,6 +199,53 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 			}
 		}
 		return listeners;
+	}
+
+	/**
+	 * Get the default {@link TestExecutionListener} classes for this bootstrapper.
+	 * <p>This method is invoked by {@link #getTestExecutionListeners()} and
+	 * delegates to {@link #getDefaultTestExecutionListenerClassNames()} to
+	 * retrieve the class names.
+	 * <p>If a particular class cannot be loaded, a {@code DEBUG} message will
+	 * be logged, but the associated exception will not be rethrown.
+	 */
+	@SuppressWarnings("unchecked")
+	protected Set<Class<? extends TestExecutionListener>> getDefaultTestExecutionListenerClasses() {
+		Set<Class<? extends TestExecutionListener>> defaultListenerClasses = new LinkedHashSet<>();
+		ClassLoader cl = getClass().getClassLoader();
+		for (String className : getDefaultTestExecutionListenerClassNames()) {
+			try {
+				defaultListenerClasses.add((Class<? extends TestExecutionListener>) ClassUtils.forName(className, cl));
+			}
+			catch (Throwable ex) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Could not load default TestExecutionListener class [" + className +
+							"]. Specify custom listener classes or make the default listener classes available.", ex);
+				}
+			}
+		}
+		return defaultListenerClasses;
+	}
+
+	/**
+	 * Get the names of the default {@link TestExecutionListener} classes for
+	 * this bootstrapper.
+	 * <p>The default implementation looks up all
+	 * {@code org.springframework.test.context.TestExecutionListener} entries
+	 * configured in all {@code META-INF/spring.factories} files on the classpath.
+	 * <p>This method is invoked by {@link #getDefaultTestExecutionListenerClasses()}.
+	 * @return an <em>unmodifiable</em> list of names of default {@code TestExecutionListener}
+	 * classes
+	 * @see SpringFactoriesLoader#loadFactoryNames
+	 */
+	protected List<String> getDefaultTestExecutionListenerClassNames() {
+		List<String> classNames =
+				SpringFactoriesLoader.loadFactoryNames(TestExecutionListener.class, getClass().getClassLoader());
+		if (logger.isInfoEnabled()) {
+			logger.info(String.format("Loaded default TestExecutionListener class names from location [%s]: %s",
+					SpringFactoriesLoader.FACTORIES_RESOURCE_LOCATION, classNames));
+		}
+		return Collections.unmodifiableList(classNames);
 	}
 
 	/**
@@ -278,15 +301,10 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 				Collections.singletonList(new ContextConfigurationAttributes(testClass));
 
 		ContextLoader contextLoader = resolveContextLoader(testClass, defaultConfigAttributesList);
-		if (logger.isTraceEnabled()) {
-			logger.trace(String.format(
-					"Neither @ContextConfiguration nor @ContextHierarchy found for test class [%s]: using %s",
-					testClass.getName(), contextLoader.getClass().getName()));
-		}
-		else if (logger.isDebugEnabled()) {
-			logger.debug(String.format(
-					"Neither @ContextConfiguration nor @ContextHierarchy found for test class [%s]: using %s",
-					testClass.getSimpleName(), contextLoader.getClass().getSimpleName()));
+		if (logger.isInfoEnabled()) {
+			logger.info(String.format(
+					"Neither @ContextConfiguration nor @ContextHierarchy found for test class [%s], using %s",
+					testClass.getName(), contextLoader.getClass().getSimpleName()));
 		}
 		return buildMergedContextConfiguration(testClass, defaultConfigAttributesList, null,
 				cacheAwareContextLoaderDelegate, false);
@@ -335,13 +353,13 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 				logger.trace(String.format("Processing locations and classes for context configuration attributes %s",
 						configAttributes));
 			}
-			if (contextLoader instanceof SmartContextLoader smartContextLoader) {
+			if (contextLoader instanceof SmartContextLoader) {
+				SmartContextLoader smartContextLoader = (SmartContextLoader) contextLoader;
 				smartContextLoader.processContextConfiguration(configAttributes);
 				locations.addAll(0, Arrays.asList(configAttributes.getLocations()));
 				classes.addAll(0, Arrays.asList(configAttributes.getClasses()));
 			}
 			else {
-				@SuppressWarnings("deprecation")
 				String[] processedLocations = contextLoader.processLocations(
 						configAttributes.getDeclaringClass(), configAttributes.getLocations());
 				locations.addAll(0, Arrays.asList(processedLocations));
@@ -386,25 +404,19 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 				customizers.add(customizer);
 			}
 		}
-		if (logger.isTraceEnabled()) {
-			logger.trace("Using ContextCustomizers for test class [%s]: %s"
-					.formatted(testClass.getName(), customizers));
-		}
-		else if (logger.isDebugEnabled()) {
-			logger.debug("Using ContextCustomizers for test class [%s]: %s"
-					.formatted(testClass.getSimpleName(), classSimpleNames(customizers)));
-		}
 		return customizers;
 	}
 
 	/**
 	 * Get the {@link ContextCustomizerFactory} instances for this bootstrapper.
-	 * <p>The default implementation delegates to
-	 * {@link TestContextSpringFactoriesUtils#loadFactoryImplementations(Class)}.
+	 * <p>The default implementation uses the {@link SpringFactoriesLoader} mechanism
+	 * for loading factories configured in all {@code META-INF/spring.factories}
+	 * files on the classpath.
 	 * @since 4.3
+	 * @see SpringFactoriesLoader#loadFactories
 	 */
 	protected List<ContextCustomizerFactory> getContextCustomizerFactories() {
-		return TestContextSpringFactoriesUtils.loadFactoryImplementations(ContextCustomizerFactory.class);
+		return SpringFactoriesLoader.loadFactories(ContextCustomizerFactory.class, getClass().getClassLoader());
 	}
 
 	/**
@@ -471,17 +483,15 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 
 		for (ContextConfigurationAttributes configAttributes : configAttributesList) {
 			if (logger.isTraceEnabled()) {
-				logger.trace("Resolving ContextLoader for context configuration attributes " + configAttributes);
+				logger.trace(String.format("Resolving ContextLoader for context configuration attributes %s",
+						configAttributes));
 			}
 			Class<? extends ContextLoader> contextLoaderClass = configAttributes.getContextLoaderClass();
 			if (ContextLoader.class != contextLoaderClass) {
-				if (logger.isTraceEnabled()) {
-					logger.trace("Found explicit ContextLoader class [%s] for context configuration attributes %s"
-							.formatted(contextLoaderClass.getName(), configAttributes));
-				}
-				else if (logger.isDebugEnabled()) {
-					logger.debug("Found explicit ContextLoader class [%s] for test class [%s]"
-						.formatted(contextLoaderClass.getSimpleName(), configAttributes.getDeclaringClass().getSimpleName()));
+				if (logger.isDebugEnabled()) {
+					logger.debug(String.format(
+							"Found explicit ContextLoader class [%s] for context configuration attributes %s",
+							contextLoaderClass.getName(), configAttributes));
 				}
 				return contextLoaderClass;
 			}
@@ -492,15 +502,12 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 	/**
 	 * Get the {@link CacheAwareContextLoaderDelegate} to use for transparent
 	 * interaction with the {@code ContextCache}.
-	 * <p>The default implementation delegates to
-	 * {@code getBootstrapContext().getCacheAwareContextLoaderDelegate()} and
-	 * supplies the returned delegate the configured
-	 * {@link #getApplicationContextFailureProcessor() ApplicationContextFailureProcessor}.
+	 * <p>The default implementation simply delegates to
+	 * {@code getBootstrapContext().getCacheAwareContextLoaderDelegate()}.
 	 * <p>Concrete subclasses may choose to override this method to return a custom
 	 * {@code CacheAwareContextLoaderDelegate} implementation with custom
 	 * {@link org.springframework.test.context.cache.ContextCache ContextCache} support.
 	 * @return the context loader delegate (never {@code null})
-	 * @see #getApplicationContextFailureProcessor()
 	 */
 	protected CacheAwareContextLoaderDelegate getCacheAwareContextLoaderDelegate() {
 		return getBootstrapContext().getCacheAwareContextLoaderDelegate();
@@ -532,10 +539,6 @@ public abstract class AbstractTestContextBootstrapper implements TestContextBoot
 		return mergedConfig;
 	}
 
-
-	private static List<String> classSimpleNames(Collection<?> components) {
-		return components.stream().map(Object::getClass).map(Class::getSimpleName).toList();
-	}
 
 	private static boolean areAllEmpty(Collection<?>... collections) {
 		return Arrays.stream(collections).allMatch(Collection::isEmpty);

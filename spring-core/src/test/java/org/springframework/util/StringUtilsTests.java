@@ -67,7 +67,6 @@ class StringUtilsTests {
 	}
 
 	@Test
-	@Deprecated
 	void trimWhitespace() {
 		assertThat(StringUtils.trimWhitespace(null)).isNull();
 		assertThat(StringUtils.trimWhitespace("")).isEqualTo("");
@@ -98,7 +97,6 @@ class StringUtilsTests {
 	}
 
 	@Test
-	@Deprecated
 	void trimLeadingWhitespace() {
 		assertThat(StringUtils.trimLeadingWhitespace(null)).isNull();
 		assertThat(StringUtils.trimLeadingWhitespace("")).isEqualTo("");
@@ -114,7 +112,6 @@ class StringUtilsTests {
 	}
 
 	@Test
-	@Deprecated
 	void trimTrailingWhitespace() {
 		assertThat(StringUtils.trimTrailingWhitespace(null)).isNull();
 		assertThat(StringUtils.trimTrailingWhitespace("")).isEqualTo("");
@@ -452,6 +449,21 @@ class StringUtilsTests {
 	}
 
 	@Test
+	@Deprecated
+	void mergeStringArrays() {
+		String[] input1 = new String[] {"myString2"};
+		String[] input2 = new String[] {"myString1", "myString2"};
+		String[] result = StringUtils.mergeStringArrays(input1, input2);
+		assertThat(result.length).isEqualTo(2);
+		assertThat(result[0]).isEqualTo("myString2");
+		assertThat(result[1]).isEqualTo("myString1");
+
+		assertThat(StringUtils.mergeStringArrays(input1, null)).isEqualTo(input1);
+		assertThat(StringUtils.mergeStringArrays(null, input2)).isEqualTo(input2);
+		assertThat(StringUtils.mergeStringArrays(null, null)).isNull();
+	}
+
+	@Test
 	void sortStringArray() {
 		String[] input = new String[] {"myString2"};
 		input = StringUtils.addStringToArray(input, "myString1");
@@ -625,6 +637,12 @@ class StringUtilsTests {
 	}
 
 	@Test
+	void parseLocaleStringWithMalformedLocaleString() {
+		Locale locale = StringUtils.parseLocaleString("_banjo_on_my_knee");
+		assertThat(locale).as("When given a malformed Locale string, must not return null.").isNotNull();
+	}
+
+	@Test
 	void parseLocaleStringWithEmptyLocaleStringYieldsNullLocale() {
 		Locale locale = StringUtils.parseLocaleString("");
 		assertThat(locale).as("When given an empty Locale string, must return null.").isNull();
@@ -658,6 +676,22 @@ class StringUtilsTests {
 	void parseLocaleWithMultiValuedVariantUsingMixtureOfUnderscoresAndSpacesAsSeparators() {
 		String variant = "proper northern";
 		String localeString = "en_GB_" + variant;
+		Locale locale = StringUtils.parseLocaleString(localeString);
+		assertThat(locale.getVariant()).as("Multi-valued variant portion of the Locale not extracted correctly.").isEqualTo(variant);
+	}
+
+	@Test  // SPR-3671
+	void parseLocaleWithMultiValuedVariantUsingSpacesAsSeparatorsWithLotsOfLeadingWhitespace() {
+		String variant = "proper northern";
+		String localeString = "en GB            " + variant;  // lots of whitespace
+		Locale locale = StringUtils.parseLocaleString(localeString);
+		assertThat(locale.getVariant()).as("Multi-valued variant portion of the Locale not extracted correctly.").isEqualTo(variant);
+	}
+
+	@Test  // SPR-3671
+	void parseLocaleWithMultiValuedVariantUsingUnderscoresAsSeparatorsWithLotsOfLeadingWhitespace() {
+		String variant = "proper_northern";
+		String localeString = "en_GB_____" + variant;  // lots of underscores
 		Locale locale = StringUtils.parseLocaleString(localeString);
 		assertThat(locale.getVariant()).as("Multi-valued variant portion of the Locale not extracted correctly.").isEqualTo(variant);
 	}
@@ -727,11 +761,6 @@ class StringUtilsTests {
 		assertThat(StringUtils.parseLocale("invalidvalue")).isEqualTo(new Locale("invalidvalue"));
 		assertThat(StringUtils.parseLocale("invalidvalue_foo")).isEqualTo(new Locale("invalidvalue", "foo"));
 		assertThat(StringUtils.parseLocale("")).isNull();
-	}
-
-	@Test
-	void parseLocaleStringWithEmptyCountryAndVariant() {
-		assertThat(StringUtils.parseLocale("be__TARASK").toString()).isEqualTo("be__TARASK");
 	}
 
 	@Test

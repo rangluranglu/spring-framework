@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -44,7 +44,6 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.UnsatisfiedServletRequestParameterException;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.filter.ServerHttpObservationFilter;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.handler.AbstractHandlerMethodMapping;
@@ -176,8 +175,6 @@ public abstract class RequestMappingInfoHandlerMapping extends AbstractHandlerMe
 			request.setAttribute(MATRIX_VARIABLES_ATTRIBUTE, result.getMatrixVariables());
 		}
 		request.setAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE, bestPattern.getPatternString());
-		ServerHttpObservationFilter.findObservationContext(request)
-				.ifPresent(context -> context.setPathPattern(bestPattern.getPatternString()));
 		request.setAttribute(URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriVariables);
 	}
 
@@ -199,8 +196,6 @@ public abstract class RequestMappingInfoHandlerMapping extends AbstractHandlerMe
 			uriVariables = getUrlPathHelper().decodePathVariables(request, uriVariables);
 		}
 		request.setAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE, bestPattern);
-		ServerHttpObservationFilter.findObservationContext(request)
-				.ifPresent(context -> context.setPathPattern(bestPattern));
 		request.setAttribute(URI_TEMPLATE_VARIABLES_ATTRIBUTE, uriVariables);
 	}
 
@@ -272,8 +267,7 @@ public abstract class RequestMappingInfoHandlerMapping extends AbstractHandlerMe
 					throw new HttpMediaTypeNotSupportedException(ex.getMessage());
 				}
 			}
-			throw new HttpMediaTypeNotSupportedException(
-					contentType, new ArrayList<>(mediaTypes), HttpMethod.valueOf(request.getMethod()));
+			throw new HttpMediaTypeNotSupportedException(contentType, new ArrayList<>(mediaTypes));
 		}
 
 		if (helper.hasProducesMismatch()) {

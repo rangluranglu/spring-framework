@@ -16,9 +16,10 @@
 
 package org.springframework.orm.jpa;
 
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.PersistenceException;
-import jakarta.persistence.spi.PersistenceUnitInfo;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceException;
+import javax.persistence.spi.PersistenceUnitInfo;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -68,7 +69,7 @@ public abstract class AbstractEntityManagerFactoryBeanTests {
 
 		private static final long serialVersionUID = 1L;
 
-		private transient final EntityManagerFactory emf;
+		private final EntityManagerFactory emf;
 
 		public DummyEntityManagerFactoryBean(EntityManagerFactory emf) {
 			this.emf = emf;

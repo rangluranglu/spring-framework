@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
 import org.springframework.util.Assert;
@@ -68,13 +68,12 @@ class ReactorServerHttpResponse extends AbstractServerHttpResponse implements Ze
 	}
 
 	@Override
-	public HttpStatusCode getStatusCode() {
-		HttpStatusCode status = super.getStatusCode();
-		return (status != null ? status : HttpStatusCode.valueOf(this.response.status().code()));
+	public HttpStatus getStatusCode() {
+		HttpStatus status = super.getStatusCode();
+		return (status != null ? status : HttpStatus.resolve(this.response.status().code()));
 	}
 
 	@Override
-	@Deprecated
 	public Integer getRawStatusCode() {
 		Integer status = super.getRawStatusCode();
 		return (status != null ? status : this.response.status().code());
@@ -82,9 +81,9 @@ class ReactorServerHttpResponse extends AbstractServerHttpResponse implements Ze
 
 	@Override
 	protected void applyStatusCode() {
-		HttpStatusCode status = super.getStatusCode();
+		Integer status = super.getRawStatusCode();
 		if (status != null) {
-			this.response.status(status.value());
+			this.response.status(status);
 		}
 	}
 
@@ -127,16 +126,30 @@ class ReactorServerHttpResponse extends AbstractServerHttpResponse implements Ze
 	@Override
 	protected void touchDataBuffer(DataBuffer buffer) {
 		if (logger.isDebugEnabled()) {
-			if (this.response instanceof ChannelOperationsId operationsId) {
-				DataBufferUtils.touch(buffer, "Channel id: " + operationsId.asLongText());
+			if (ReactorServerHttpRequest.reactorNettyRequestChannelOperationsIdPresent) {
+				if (ChannelOperationsIdHelper.touch(buffer, this.response)) {
+					return;
+				}
 			}
-			else {
-				this.response.withConnection(connection -> {
-					ChannelId id = connection.channel().id();
-					DataBufferUtils.touch(buffer, "Channel id: " + id.asShortText());
-				});
-			}
+			this.response.withConnection(connection -> {
+				ChannelId id = connection.channel().id();
+				DataBufferUtils.touch(buffer, "Channel id: " + id.asShortText());
+			});
 		}
 	}
+
+
+	private static class ChannelOperationsIdHelper {
+
+		public static boolean touch(DataBuffer dataBuffer, HttpServerResponse response) {
+			if (response instanceof reactor.netty.ChannelOperationsId) {
+				String id = ((ChannelOperationsId) response).asLongText();
+				DataBufferUtils.touch(dataBuffer, "Channel id: " + id);
+				return true;
+			}
+			return false;
+		}
+	}
+
 
 }

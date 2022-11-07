@@ -22,6 +22,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -94,7 +95,7 @@ class MergedAnnotationPredicatesTests {
 		List<MergedAnnotation<TestAnnotation>> filtered = MergedAnnotations.from(
 				WithMultipleTestAnnotation.class).stream(TestAnnotation.class).filter(
 						MergedAnnotationPredicates.firstRunOf(
-								this::firstCharOfValue)).toList();
+								this::firstCharOfValue)).collect(Collectors.toList());
 		assertThat(filtered.stream().map(
 				annotation -> annotation.getString("value"))).containsExactly("a1", "a2", "a3");
 	}
@@ -110,7 +111,7 @@ class MergedAnnotationPredicatesTests {
 		List<MergedAnnotation<TestAnnotation>> filtered = MergedAnnotations.from(
 				WithMultipleTestAnnotation.class).stream(TestAnnotation.class).filter(
 						MergedAnnotationPredicates.unique(
-								this::firstCharOfValue)).toList();
+								this::firstCharOfValue)).collect(Collectors.toList());
 		assertThat(filtered.stream().map(
 				annotation -> annotation.getString("value"))).containsExactly("a1", "b1", "c1");
 	}

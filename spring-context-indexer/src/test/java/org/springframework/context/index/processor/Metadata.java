@@ -18,6 +18,7 @@ package org.springframework.context.index.processor;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.assertj.core.api.Condition;
 
@@ -29,7 +30,7 @@ import org.assertj.core.api.Condition;
 class Metadata {
 
 	public static Condition<CandidateComponentsMetadata> of(Class<?> type, Class<?>... stereotypes) {
-		return of(type.getName(), Arrays.stream(stereotypes).map(Class::getName).toList());
+		return of(type.getName(), Arrays.stream(stereotypes).map(Class::getName).collect(Collectors.toList()));
 	}
 
 	public static Condition<CandidateComponentsMetadata> of(String type, String... stereotypes) {

@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
@@ -68,7 +69,7 @@ public class SyncInvocableHandlerMethod extends HandlerMethod {
 	public List<SyncHandlerMethodArgumentResolver> getResolvers() {
 		return this.delegate.getResolvers().stream()
 				.map(resolver -> (SyncHandlerMethodArgumentResolver) resolver)
-				.toList();
+				.collect(Collectors.toList());
 	}
 
 	/**

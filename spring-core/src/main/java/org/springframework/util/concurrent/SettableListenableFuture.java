@@ -36,9 +36,7 @@ import org.springframework.util.Assert;
  * @author Juergen Hoeller
  * @since 4.1
  * @param <T> the result type returned by this Future's {@code get} method
- * @deprecated as of 6.0, in favor of {@link CompletableFuture}
  */
-@Deprecated(since = "6.0")
 public class SettableListenableFuture<T> implements ListenableFuture<T> {
 
 	private static final Callable<Object> DUMMY_CALLABLE = () -> {

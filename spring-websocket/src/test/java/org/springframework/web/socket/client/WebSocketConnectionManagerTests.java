@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,15 @@
 package org.springframework.web.socket.client;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.context.Lifecycle;
 import org.springframework.http.HttpHeaders;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureTask;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.WebSocketSession;
@@ -44,7 +46,7 @@ public class WebSocketConnectionManagerTests {
 
 	@Test
 	public void openConnection() throws Exception {
-		List<String> subprotocols = List.of("abc");
+		List<String> subprotocols = Arrays.asList("abc");
 
 		TestLifecycleWebSocketClient client = new TestLifecycleWebSocketClient(false);
 		WebSocketHandler handler = new TextWebSocketHandler();
@@ -110,21 +112,21 @@ public class WebSocketConnectionManagerTests {
 		}
 
 		@Override
-		public CompletableFuture<WebSocketSession> execute(WebSocketHandler handler,
+		public ListenableFuture<WebSocketSession> doHandshake(WebSocketHandler handler,
 				String uriTemplate, Object... uriVars) {
 
 			URI uri = UriComponentsBuilder.fromUriString(uriTemplate).buildAndExpand(uriVars).encode().toUri();
-			return execute(handler, null, uri);
+			return doHandshake(handler, null, uri);
 		}
 
 		@Override
-		public CompletableFuture<WebSocketSession> execute(WebSocketHandler handler,
+		public ListenableFuture<WebSocketSession> doHandshake(WebSocketHandler handler,
 				WebSocketHttpHeaders headers, URI uri) {
 
 			this.webSocketHandler = handler;
 			this.headers = headers;
 			this.uri = uri;
-			return CompletableFuture.supplyAsync(() -> null);
+			return new ListenableFutureTask<>(() -> null);
 		}
 	}
 

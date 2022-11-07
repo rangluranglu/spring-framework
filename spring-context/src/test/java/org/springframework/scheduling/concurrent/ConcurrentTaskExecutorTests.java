@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.core.task.NoOpRunnable;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -39,8 +40,7 @@ class ConcurrentTaskExecutorTests extends AbstractSchedulingTaskExecutorTests {
 
 
 	@Override
-	@SuppressWarnings("deprecation")
-	protected org.springframework.core.task.AsyncListenableTaskExecutor buildExecutor() {
+	protected AsyncListenableTaskExecutor buildExecutor() {
 		concurrentExecutor.setThreadFactory(new CustomizableThreadFactory(this.threadNamePrefix));
 		return new ConcurrentTaskExecutor(concurrentExecutor);
 	}

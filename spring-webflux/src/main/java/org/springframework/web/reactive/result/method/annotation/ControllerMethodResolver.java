@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -132,9 +133,9 @@ class ControllerMethodResolver {
 			ConfigurableApplicationContext context) {
 
 		return initResolvers(customResolvers, adapterRegistry, context, false, Collections.emptyList()).stream()
-				.filter(SyncHandlerMethodArgumentResolver.class::isInstance)
-				.map(SyncHandlerMethodArgumentResolver.class::cast)
-				.toList();
+				.filter(resolver -> resolver instanceof SyncHandlerMethodArgumentResolver)
+				.map(resolver -> (SyncHandlerMethodArgumentResolver) resolver)
+				.collect(Collectors.toList());
 	}
 
 	private static List<HandlerMethodArgumentResolver> modelMethodResolvers(
@@ -372,7 +373,17 @@ class ControllerMethodResolver {
 	 */
 	public SessionAttributesHandler getSessionAttributesHandler(HandlerMethod handlerMethod) {
 		Class<?> handlerType = handlerMethod.getBeanType();
-		return this.sessionAttributesHandlerCache.computeIfAbsent(handlerType, SessionAttributesHandler::new);
+		SessionAttributesHandler result = this.sessionAttributesHandlerCache.get(handlerType);
+		if (result == null) {
+			synchronized (this.sessionAttributesHandlerCache) {
+				result = this.sessionAttributesHandlerCache.get(handlerType);
+				if (result == null) {
+					result = new SessionAttributesHandler(handlerType);
+					this.sessionAttributesHandlerCache.put(handlerType, result);
+				}
+			}
+		}
+		return result;
 	}
 
 }

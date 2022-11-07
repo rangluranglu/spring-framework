@@ -55,7 +55,8 @@ public abstract class AbstractHttpHandlerIntegrationTests {
 	 */
 	@RegisterExtension
 	TestExecutionExceptionHandler serverErrorToAssertionErrorConverter = (context, throwable) -> {
-		if (throwable instanceof HttpServerErrorException ex) {
+		if (throwable instanceof HttpServerErrorException) {
+			HttpServerErrorException ex = (HttpServerErrorException) throwable;
 			String responseBody = ex.getResponseBodyAsString();
 			if (StringUtils.hasText(responseBody)) {
 				String prefix = AssertionError.class.getName() + ": ";
@@ -127,7 +128,6 @@ public abstract class AbstractHttpHandlerIntegrationTests {
 		return Stream.of(
 				named("Jetty", new JettyHttpServer()),
 				named("Reactor Netty", new ReactorHttpServer()),
-				named("Reactor Netty 2", new ReactorHttpServer()),
 				named("Tomcat", new TomcatHttpServer()),
 				named("Undertow", new UndertowHttpServer())
 		);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.Nullable;
 import org.springframework.ui.Model;
 import org.springframework.ui.ModelMap;
@@ -49,7 +49,7 @@ import org.springframework.web.bind.support.SimpleSessionStatus;
  */
 public class ModelAndViewContainer {
 
-	private boolean ignoreDefaultModelOnRedirect = true;
+	private boolean ignoreDefaultModelOnRedirect = false;
 
 	@Nullable
 	private Object view;
@@ -62,7 +62,7 @@ public class ModelAndViewContainer {
 	private boolean redirectModelScenario = false;
 
 	@Nullable
-	private HttpStatusCode status;
+	private HttpStatus status;
 
 	private final Set<String> noBinding = new HashSet<>(4);
 
@@ -83,11 +83,8 @@ public class ModelAndViewContainer {
 	 * is not declared. Setting it to {@code false} means the "default" model
 	 * may be used in a redirect if the controller method doesn't declare a
 	 * RedirectAttributes argument.
-	 * <p>As of 6.0, this property is set to {@code true} by default.
-	 * @deprecated as of 6.0 without a replacement; once removed, the default
-	 * model will always be ignored on redirect
+	 * <p>The default setting is {@code false}.
 	 */
-	@Deprecated(since = "6.0")
 	public void setIgnoreDefaultModelOnRedirect(boolean ignoreDefaultModelOnRedirect) {
 		this.ignoreDefaultModelOnRedirect = ignoreDefaultModelOnRedirect;
 	}
@@ -196,7 +193,7 @@ public class ModelAndViewContainer {
 	 * {@code ModelAndView} used for view rendering purposes.
 	 * @since 4.3
 	 */
-	public void setStatus(@Nullable HttpStatusCode status) {
+	public void setStatus(@Nullable HttpStatus status) {
 		this.status = status;
 	}
 
@@ -205,7 +202,7 @@ public class ModelAndViewContainer {
 	 * @since 4.3
 	 */
 	@Nullable
-	public HttpStatusCode getStatus() {
+	public HttpStatus getStatus() {
 		return this.status;
 	}
 

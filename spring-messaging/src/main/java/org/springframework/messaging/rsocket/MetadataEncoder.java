@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ final class MetadataEncoder {
 		if (ObjectUtils.isEmpty(routeVars)) {
 			return route;
 		}
-		StringBuilder sb = new StringBuilder();
+		StringBuffer sb = new StringBuffer();
 		int index = 0;
 		Matcher matcher = VARS_PATTERN.matcher(route);
 		while (matcher.find()) {
@@ -141,7 +141,8 @@ final class MetadataEncoder {
 		}
 		ReactiveAdapter adapter = this.strategies.reactiveAdapterRegistry().getAdapter(metadata.getClass());
 		if (adapter != null) {
-			Assert.isTrue(!adapter.isMultiValue(), "Expected single value: " + metadata);
+			Object originalMetadata = metadata;
+			Assert.isTrue(!adapter.isMultiValue(), () -> "Expected single value: " + originalMetadata);
 			metadata = Mono.from(adapter.toPublisher(metadata)).defaultIfEmpty(NO_VALUE);
 			this.hasAsyncValues = true;
 		}

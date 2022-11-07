@@ -16,7 +16,6 @@
 package org.springframework.build.api;
 
 import java.io.File;
-import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -24,7 +23,6 @@ import java.util.List;
 
 import me.champeau.gradle.japicmp.JapicmpPlugin;
 import me.champeau.gradle.japicmp.JapicmpTask;
-import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -34,12 +32,10 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.tasks.Jar;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@link Plugin} that applies the {@code "japicmp-gradle-plugin"}
- * and create tasks for all subprojects named {@code "spring-*"}, diffing the public API one by one
+ * and create tasks for all subprojects, diffing the public API one by one
  * and creating the reports in {@code "build/reports/api-diff/$OLDVERSION_to_$NEWVERSION/"}.
  * <p>{@code "./gradlew apiDiff -PbaselineVersion=5.1.0.RELEASE"} will output the
  * reports for the API diff between the baseline version and the current one for all modules.
@@ -50,15 +46,11 @@ import org.slf4j.LoggerFactory;
  */
 public class ApiDiffPlugin implements Plugin<Project> {
 
-	private static final Logger logger = LoggerFactory.getLogger(ApiDiffPlugin.class);
-
 	public static final String TASK_NAME = "apiDiff";
 
 	private static final String BASELINE_VERSION_PROPERTY = "baselineVersion";
 
 	private static final List<String> PACKAGE_INCLUDES = Collections.singletonList("org.springframework.*");
-
-	private static final URI SPRING_MILESTONE_REPOSITORY = URI.create("https://repo.spring.io/milestone");
 
 	@Override
 	public void apply(Project project) {
@@ -71,24 +63,16 @@ public class ApiDiffPlugin implements Plugin<Project> {
 
 	private void applyApiDiffConventions(Project project) {
 		String baselineVersion = project.property(BASELINE_VERSION_PROPERTY).toString();
-		project.subprojects(subProject -> {
-			if (subProject.getName().startsWith("spring-")) {
-				createApiDiffTask(baselineVersion, subProject);
-			}
-		});
+		project.subprojects(subProject -> createApiDiffTask(baselineVersion, subProject));
 	}
 
 	private void createApiDiffTask(String baselineVersion, Project project) {
 		if (isProjectEligible(project)) {
-			// Add Spring Milestone repository for generating diffs against previous milestones
-			project.getRootProject()
-					.getRepositories()
-					.maven(mavenArtifactRepository -> mavenArtifactRepository.setUrl(SPRING_MILESTONE_REPOSITORY));
 			JapicmpTask apiDiff = project.getTasks().create(TASK_NAME, JapicmpTask.class);
 			apiDiff.setDescription("Generates an API diff report with japicmp");
 			apiDiff.setGroup(JavaBasePlugin.DOCUMENTATION_GROUP);
 
-			apiDiff.setOldClasspath(createBaselineConfiguration(baselineVersion, project));
+			apiDiff.setOldClasspath(project.files(createBaselineConfiguration(baselineVersion, project)));
 			TaskProvider<Jar> jar = project.getTasks().withType(Jar.class).named("jar");
 			apiDiff.setNewArchives(project.getLayout().files(jar.get().getArchiveFile().get().getAsFile()));
 			apiDiff.setNewClasspath(getRuntimeClassPath(project));
@@ -114,16 +98,7 @@ public class ApiDiffPlugin implements Plugin<Project> {
 		String baseline = String.join(":",
 				project.getGroup().toString(), project.getName(), baselineVersion);
 		Dependency baselineDependency = project.getDependencies().create(baseline + "@jar");
-		Configuration baselineConfiguration = project.getRootProject().getConfigurations().detachedConfiguration(baselineDependency);
-		try {
-			// eagerly resolve the baseline configuration to check whether this is a new Spring module
-			baselineConfiguration.resolve();
-			return baselineConfiguration;
-		}
-		catch (GradleException exception) {
-			logger.warn("Could not resolve {} - assuming this is a new Spring module.", baseline);
-		}
-		return project.getRootProject().getConfigurations().detachedConfiguration();
+		return project.getRootProject().getConfigurations().detachedConfiguration(baselineDependency);
 	}
 
 	private Configuration getRuntimeClassPath(Project project) {

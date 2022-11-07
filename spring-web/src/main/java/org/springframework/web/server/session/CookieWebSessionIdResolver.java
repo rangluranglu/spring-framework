@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpCookie;
 import org.springframework.http.ResponseCookie;
@@ -99,7 +100,7 @@ public class CookieWebSessionIdResolver implements WebSessionIdResolver {
 		if (cookies == null) {
 			return Collections.emptyList();
 		}
-		return cookies.stream().map(HttpCookie::getValue).toList();
+		return cookies.stream().map(HttpCookie::getValue).collect(Collectors.toList());
 	}
 
 	@Override

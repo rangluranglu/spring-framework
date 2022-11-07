@@ -30,11 +30,12 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jakarta.servlet.DispatcherType;
-import jakarta.servlet.ServletContext;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.DispatcherType;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -53,6 +54,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.RequestPath;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.lang.Nullable;
+import org.springframework.ui.context.ThemeSource;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.WebApplicationContext;
@@ -62,6 +64,7 @@ import org.springframework.web.context.request.async.WebAsyncUtils;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.multipart.MultipartResolver;
+import org.springframework.web.util.NestedServletException;
 import org.springframework.web.util.ServletRequestPathUtils;
 import org.springframework.web.util.WebUtils;
 
@@ -116,9 +119,10 @@ import org.springframework.web.util.WebUtils;
  * {@link org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator}.
  *
  * <li>The dispatcher's strategy for resolving multipart requests is determined by a
- * {@link org.springframework.web.multipart.MultipartResolver} implementation. An
- * implementation for Servlet 3 is included. The MultipartResolver bean name is
- * "multipartResolver"; default is none.
+ * {@link org.springframework.web.multipart.MultipartResolver} implementation.
+ * Implementations for Apache Commons FileUpload and Servlet 3 are included; the typical
+ * choice is {@link org.springframework.web.multipart.commons.CommonsMultipartResolver}.
+ * The MultipartResolver bean name is "multipartResolver"; default is none.
  *
  * <li>Its locale resolution strategy is determined by a {@link LocaleResolver}.
  * Out-of-the-box implementations work via HTTP accept header, cookie, or session.
@@ -129,7 +133,6 @@ import org.springframework.web.util.WebUtils;
  * Implementations for a fixed theme and for cookie and session storage are included.
  * The ThemeResolver bean name is "themeResolver"; default is
  * {@link org.springframework.web.servlet.theme.FixedThemeResolver}.
- * Theme support is deprecated as of 6.0 with no direct replacement.
  * </ul>
  *
  * <p><b>NOTE: The {@code @RequestMapping} annotation will only be processed if a
@@ -169,11 +172,7 @@ public class DispatcherServlet extends FrameworkServlet {
 	/** Well-known name for the LocaleResolver object in the bean factory for this namespace. */
 	public static final String LOCALE_RESOLVER_BEAN_NAME = "localeResolver";
 
-	/**
-	 * Well-known name for the ThemeResolver object in the bean factory for this namespace.
-	 * @deprecated as of 6.0, with no direct replacement
-	 */
-	@Deprecated
+	/** Well-known name for the ThemeResolver object in the bean factory for this namespace. */
 	public static final String THEME_RESOLVER_BEAN_NAME = "themeResolver";
 
 	/**
@@ -230,17 +229,13 @@ public class DispatcherServlet extends FrameworkServlet {
 	/**
 	 * Request attribute to hold the current ThemeResolver, retrievable by views.
 	 * @see org.springframework.web.servlet.support.RequestContextUtils#getThemeResolver
-	 * @deprecated as of 6.0, with no direct replacement
 	 */
-	@Deprecated
 	public static final String THEME_RESOLVER_ATTRIBUTE = DispatcherServlet.class.getName() + ".THEME_RESOLVER";
 
 	/**
 	 * Request attribute to hold the current ThemeSource, retrievable by views.
 	 * @see org.springframework.web.servlet.support.RequestContextUtils#getThemeSource
-	 * @deprecated as of 6.0, with no direct replacement
 	 */
-	@Deprecated
 	public static final String THEME_SOURCE_ATTRIBUTE = DispatcherServlet.class.getName() + ".THEME_SOURCE";
 
 	/**
@@ -319,7 +314,6 @@ public class DispatcherServlet extends FrameworkServlet {
 
 	/** ThemeResolver used by this servlet. */
 	@Nullable
-	@Deprecated
 	private ThemeResolver themeResolver;
 
 	/** List of HandlerMappings used by this servlet. */
@@ -373,7 +367,7 @@ public class DispatcherServlet extends FrameworkServlet {
 
 	/**
 	 * Create a new {@code DispatcherServlet} with the given web application context. This
-	 * constructor is useful in Servlet environments where instance-based registration
+	 * constructor is useful in Servlet 3.0+ environments where instance-based registration
 	 * of servlets is possible through the {@link ServletContext#addServlet} API.
 	 * <p>Using this constructor indicates that the following properties / init-params
 	 * will be ignored:
@@ -566,7 +560,6 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * <p>If no bean is defined with the given name in the BeanFactory for this namespace,
 	 * we default to a FixedThemeResolver.
 	 */
-	@Deprecated
 	private void initThemeResolver(ApplicationContext context) {
 		try {
 			this.themeResolver = context.getBean(THEME_RESOLVER_BEAN_NAME, ThemeResolver.class);
@@ -809,10 +802,8 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @see #getWebApplicationContext()
 	 */
 	@Nullable
-	@Deprecated
-	public final org.springframework.ui.context.ThemeSource getThemeSource() {
-		return (getWebApplicationContext() instanceof org.springframework.ui.context.ThemeSource ?
-				(org.springframework.ui.context.ThemeSource) getWebApplicationContext() : null);
+	public final ThemeSource getThemeSource() {
+		return (getWebApplicationContext() instanceof ThemeSource ? (ThemeSource) getWebApplicationContext() : null);
 	}
 
 	/**
@@ -1092,7 +1083,7 @@ public class DispatcherServlet extends FrameworkServlet {
 			catch (Throwable err) {
 				// As of 4.3, we're processing Errors thrown from handler methods as well,
 				// making them available for @ExceptionHandler methods and other scenarios.
-				dispatchException = new ServletException("Handler dispatch failed: " + err, err);
+				dispatchException = new NestedServletException("Handler dispatch failed", err);
 			}
 			processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
 		}
@@ -1101,7 +1092,7 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 		catch (Throwable err) {
 			triggerAfterCompletion(processedRequest, response, mappedHandler,
-					new ServletException("Handler processing failed: " + err, err));
+					new NestedServletException("Handler processing failed", err));
 		}
 		finally {
 			if (asyncManager.isConcurrentHandlingStarted()) {
@@ -1233,7 +1224,7 @@ public class DispatcherServlet extends FrameworkServlet {
 	}
 
 	/**
-	 * Check "jakarta.servlet.error.exception" attribute for a multipart exception.
+	 * Check "javax.servlet.error.exception" attribute for a multipart exception.
 	 */
 	private boolean hasMultipartException(HttpServletRequest request) {
 		Throwable error = (Throwable) request.getAttribute(WebUtils.ERROR_EXCEPTION_ATTRIBUTE);

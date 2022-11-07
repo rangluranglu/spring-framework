@@ -1,3 +1,0 @@
-org.springframework.beans.factory.aot.BeanFactoryInitializationAotProcessor= \
-org.springframework.context.aot.ReflectiveProcessorBeanFactoryInitializationAotProcessor
-

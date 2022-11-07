@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.springframework.core.ResolvableType;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.LimitedDataBufferList;
+import org.springframework.core.io.buffer.PooledDataBuffer;
 import org.springframework.core.log.LogFormatUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -62,7 +64,7 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 	public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
 	/** The default delimiter strings to use, i.e. {@code \r\n} and {@code \n}. */
-	public static final List<String> DEFAULT_DELIMITERS = List.of("\r\n", "\n");
+	public static final List<String> DEFAULT_DELIMITERS = Arrays.asList("\r\n", "\n");
 
 
 	private final List<String> delimiters;
@@ -126,7 +128,7 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 					return Mono.just(lastBuffer);
 				}))
 				.doOnTerminate(chunks::releaseAndClear)
-				.doOnDiscard(DataBuffer.class, DataBufferUtils::release)
+				.doOnDiscard(PooledDataBuffer.class, PooledDataBuffer::release)
 				.map(buffer -> decode(buffer, elementType, mimeType, hints));
 	}
 
@@ -143,44 +145,41 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 	private Collection<DataBuffer> processDataBuffer(
 			DataBuffer buffer, DataBufferUtils.Matcher matcher, LimitedDataBufferList chunks) {
 
-		boolean release = true;
 		try {
 			List<DataBuffer> result = null;
 			do {
 				int endIndex = matcher.match(buffer);
 				if (endIndex == -1) {
 					chunks.add(buffer);
-					release = false;
+					DataBufferUtils.retain(buffer); // retain after add (may raise DataBufferLimitException)
 					break;
 				}
-				DataBuffer split = buffer.split(endIndex + 1);
-				if (result == null) {
-					result = new ArrayList<>();
-				}
-				int delimiterLength = matcher.delimiter().length;
+				int startIndex = buffer.readPosition();
+				int length = (endIndex - startIndex + 1);
+				DataBuffer slice = buffer.retainedSlice(startIndex, length);
+				result = (result != null ? result : new ArrayList<>());
 				if (chunks.isEmpty()) {
 					if (this.stripDelimiter) {
-						split.writePosition(split.writePosition() - delimiterLength);
+						slice.writePosition(slice.writePosition() - matcher.delimiter().length);
 					}
-					result.add(split);
+					result.add(slice);
 				}
 				else {
-					chunks.add(split);
+					chunks.add(slice);
 					DataBuffer joined = buffer.factory().join(chunks);
 					if (this.stripDelimiter) {
-						joined.writePosition(joined.writePosition() - delimiterLength);
+						joined.writePosition(joined.writePosition() - matcher.delimiter().length);
 					}
 					result.add(joined);
 					chunks.clear();
 				}
+				buffer.readPosition(endIndex + 1);
 			}
 			while (buffer.readableByteCount() > 0);
 			return (result != null ? result : Collections.emptyList());
 		}
 		finally {
-			if (release) {
-				DataBufferUtils.release(buffer);
-			}
+			DataBufferUtils.release(buffer);
 		}
 	}
 
@@ -189,7 +188,7 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
 
 		Charset charset = getCharset(mimeType);
-		CharBuffer charBuffer = charset.decode(dataBuffer.toByteBuffer());
+		CharBuffer charBuffer = charset.decode(dataBuffer.asByteBuffer());
 		DataBufferUtils.release(dataBuffer);
 		String value = charBuffer.toString();
 		LogFormatUtils.traceDebug(logger, traceOn -> {
@@ -210,6 +209,17 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 
 	/**
 	 * Create a {@code StringDecoder} for {@code "text/plain"}.
+	 * @param stripDelimiter this flag is ignored
+	 * @deprecated as of Spring 5.0.4, in favor of {@link #textPlainOnly()} or
+	 * {@link #textPlainOnly(List, boolean)}
+	 */
+	@Deprecated
+	public static StringDecoder textPlainOnly(boolean stripDelimiter) {
+		return textPlainOnly();
+	}
+
+	/**
+	 * Create a {@code StringDecoder} for {@code "text/plain"}.
 	 */
 	public static StringDecoder textPlainOnly() {
 		return textPlainOnly(DEFAULT_DELIMITERS, true);
@@ -223,6 +233,17 @@ public final class StringDecoder extends AbstractDataBufferDecoder<String> {
 	 */
 	public static StringDecoder textPlainOnly(List<String> delimiters, boolean stripDelimiter) {
 		return new StringDecoder(delimiters, stripDelimiter, new MimeType("text", "plain", DEFAULT_CHARSET));
+	}
+
+	/**
+	 * Create a {@code StringDecoder} that supports all MIME types.
+	 * @param stripDelimiter this flag is ignored
+	 * @deprecated as of Spring 5.0.4, in favor of {@link #allMimeTypes()} or
+	 * {@link #allMimeTypes(List, boolean)}
+	 */
+	@Deprecated
+	public static StringDecoder allMimeTypes(boolean stripDelimiter) {
+		return allMimeTypes();
 	}
 
 	/**

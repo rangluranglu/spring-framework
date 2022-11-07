@@ -16,9 +16,9 @@
 
 package org.springframework.web.socket.client.standard;
 
-import jakarta.websocket.ContainerProvider;
-import jakarta.websocket.Session;
-import jakarta.websocket.WebSocketContainer;
+import javax.websocket.ContainerProvider;
+import javax.websocket.Session;
+import javax.websocket.WebSocketContainer;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
@@ -33,7 +33,7 @@ import org.springframework.web.socket.handler.BeanCreatingHandlerProvider;
 /**
  * WebSocket {@link ConnectionManagerSupport connection manager} that connects
  * to the server via {@link WebSocketContainer} and handles the session with an
- * {@link jakarta.websocket.ClientEndpoint @ClientEndpoint} endpoint.
+ * {@link javax.websocket.ClientEndpoint @ClientEndpoint} endpoint.
  *
  * @author Rossen Stoyanchev
  * @since 4.0

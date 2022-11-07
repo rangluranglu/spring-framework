@@ -47,7 +47,6 @@ import org.springframework.util.concurrent.ListenableFutureTask;
  * @see org.springframework.core.task.TaskExecutor
  * @see SchedulerFactoryBean#setTaskExecutor
  */
-@SuppressWarnings("deprecation")
 public class SimpleThreadPoolTaskExecutor extends SimpleThreadPool
 		implements AsyncListenableTaskExecutor, SchedulingTaskExecutor, InitializingBean, DisposableBean {
 

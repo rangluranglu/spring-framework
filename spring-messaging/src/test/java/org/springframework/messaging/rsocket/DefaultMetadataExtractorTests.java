@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,11 +47,12 @@ import static org.springframework.util.MimeTypeUtils.TEXT_HTML;
 import static org.springframework.util.MimeTypeUtils.TEXT_PLAIN;
 import static org.springframework.util.MimeTypeUtils.TEXT_XML;
 
+
 /**
  * Unit tests for {@link DefaultMetadataExtractor}.
  * @author Rossen Stoyanchev
  */
-class DefaultMetadataExtractorTests {
+public class DefaultMetadataExtractorTests {
 
 	private static MimeType COMPOSITE_METADATA =
 			MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_COMPOSITE_METADATA.getString());
@@ -63,21 +64,21 @@ class DefaultMetadataExtractorTests {
 
 
 	@BeforeEach
-	void setUp() {
+	public void setUp() {
 		DataBufferFactory bufferFactory = new LeakAwareNettyDataBufferFactory(PooledByteBufAllocator.DEFAULT);
 		this.strategies = RSocketStrategies.builder().dataBufferFactory(bufferFactory).build();
 		this.extractor = new DefaultMetadataExtractor(StringDecoder.allMimeTypes());
 	}
 
 	@AfterEach
-	void tearDown() throws InterruptedException {
+	public void tearDown() throws InterruptedException {
 		DataBufferFactory bufferFactory = this.strategies.dataBufferFactory();
 		((LeakAwareNettyDataBufferFactory) bufferFactory).checkForLeaks(Duration.ofSeconds(5));
 	}
 
 
 	@Test
-	void compositeMetadataWithDefaultSettings() {
+	public void compositeMetadataWithDefaultSettings() {
 		MetadataEncoder metadataEncoder = new MetadataEncoder(COMPOSITE_METADATA, this.strategies)
 				.route("toA")
 				.metadata("text data", TEXT_PLAIN)
@@ -93,7 +94,7 @@ class DefaultMetadataExtractorTests {
 	}
 
 	@Test
-	void compositeMetadataWithMimeTypeRegistrations() {
+	public void compositeMetadataWithMimeTypeRegistrations() {
 		this.extractor.metadataToExtract(TEXT_PLAIN, String.class, "text-entry");
 		this.extractor.metadataToExtract(TEXT_HTML, String.class, "html-entry");
 		this.extractor.metadataToExtract(TEXT_XML, String.class, "xml-entry");
@@ -117,7 +118,7 @@ class DefaultMetadataExtractorTests {
 	}
 
 	@Test
-	void route() {
+	public void route() {
 		MimeType metaMimeType = MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_ROUTING.getString());
 		MetadataEncoder metadataEncoder = new MetadataEncoder(metaMimeType, this.strategies).route("toA");
 		DataBuffer metadata = metadataEncoder.encode().block();
@@ -129,7 +130,7 @@ class DefaultMetadataExtractorTests {
 	}
 
 	@Test
-	void routeAsText() {
+	public void routeAsText() {
 		this.extractor.metadataToExtract(TEXT_PLAIN, String.class, ROUTE_KEY);
 
 		MetadataEncoder metadataEncoder = new MetadataEncoder(TEXT_PLAIN, this.strategies).route("toA");
@@ -142,7 +143,7 @@ class DefaultMetadataExtractorTests {
 	}
 
 	@Test
-	void routeWithCustomFormatting() {
+	public void routeWithCustomFormatting() {
 		this.extractor.metadataToExtract(TEXT_PLAIN, String.class, (text, result) -> {
 			String[] items = text.split(":");
 			Assert.isTrue(items.length == 2, "Expected two items");
@@ -162,7 +163,7 @@ class DefaultMetadataExtractorTests {
 	}
 
 	@Test
-	void nonCompositeMetadataCanBeReadTwice() {
+	public void nonCompositeMetadataCanBeReadTwice() {
 		DefaultMetadataExtractor extractor = new DefaultMetadataExtractor(new TestDecoder());
 		extractor.metadataToExtract(TEXT_PLAIN, String.class, "name");
 
@@ -180,7 +181,7 @@ class DefaultMetadataExtractorTests {
 	}
 
 	@Test
-	void noDecoder() {
+	public void noDecoder() {
 		DefaultMetadataExtractor extractor =
 				new DefaultMetadataExtractor(Collections.singletonList(new ByteArrayDecoder())
 		);
@@ -192,7 +193,7 @@ class DefaultMetadataExtractorTests {
 
 
 	private Payload createPayload(DataBuffer metadata) {
-		return PayloadUtils.createPayload(this.strategies.dataBufferFactory().allocateBuffer(256), metadata);
+		return PayloadUtils.createPayload(this.strategies.dataBufferFactory().allocateBuffer(), metadata);
 	}
 
 
@@ -202,7 +203,7 @@ class DefaultMetadataExtractorTests {
 	 */
 	private static class TestDecoder extends AbstractDataBufferDecoder<String> {
 
-		TestDecoder() {
+		public TestDecoder() {
 			super(TEXT_PLAIN);
 		}
 
@@ -216,5 +217,4 @@ class DefaultMetadataExtractorTests {
 			return new String(bytes, StandardCharsets.UTF_8);
 		}
 	}
-
 }

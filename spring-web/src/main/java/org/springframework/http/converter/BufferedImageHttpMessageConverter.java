@@ -128,7 +128,7 @@ public class BufferedImageHttpMessageConverter implements HttpMessageConverter<B
 	 */
 	public void setCacheDir(File cacheDir) {
 		Assert.notNull(cacheDir, "'cacheDir' must not be null");
-		Assert.isTrue(cacheDir.isDirectory(), "'cacheDir' is not a directory");
+		Assert.isTrue(cacheDir.isDirectory(), () -> "'cacheDir' is not a directory: " + cacheDir);
 		this.cacheDir = cacheDir;
 	}
 
@@ -225,7 +225,8 @@ public class BufferedImageHttpMessageConverter implements HttpMessageConverter<B
 		final MediaType selectedContentType = getContentType(contentType);
 		outputMessage.getHeaders().setContentType(selectedContentType);
 
-		if (outputMessage instanceof StreamingHttpOutputMessage streamingOutputMessage) {
+		if (outputMessage instanceof StreamingHttpOutputMessage) {
+			StreamingHttpOutputMessage streamingOutputMessage = (StreamingHttpOutputMessage) outputMessage;
 			streamingOutputMessage.setBody(outputStream -> writeInternal(image, selectedContentType, outputStream));
 		}
 		else {

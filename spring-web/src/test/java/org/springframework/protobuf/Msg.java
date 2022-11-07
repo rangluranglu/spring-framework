@@ -22,7 +22,6 @@ package org.springframework.protobuf;
 /**
  * Protobuf type {@code Msg}
  */
-@SuppressWarnings("serial")
 public  final class Msg extends
     com.google.protobuf.GeneratedMessage
     implements MsgOrBuilder {

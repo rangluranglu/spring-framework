@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import reactor.blockhound.BlockHound;
 import reactor.blockhound.integration.BlockHoundIntegration;
@@ -169,13 +170,13 @@ public final class WebHttpHandlerBuilder {
 		List<WebFilter> webFilters = context
 				.getBeanProvider(WebFilter.class)
 				.orderedStream()
-				.toList();
+				.collect(Collectors.toList());
 		builder.filters(filters -> filters.addAll(webFilters));
 
 		List<WebExceptionHandler> exceptionHandlers = context
 				.getBeanProvider(WebExceptionHandler.class)
 				.orderedStream()
-				.toList();
+				.collect(Collectors.toList());
 		builder.exceptionHandlers(handlers -> handlers.addAll(exceptionHandlers));
 
 		context.getBeanProvider(HttpHandlerDecoratorFactory.class)
@@ -252,7 +253,7 @@ public final class WebHttpHandlerBuilder {
 					}
 				})
 				.filter(filter -> !(filter instanceof ForwardedHeaderTransformer))
-				.toList();
+				.collect(Collectors.toList());
 
 		this.filters.clear();
 		this.filters.addAll(filtersToUse);

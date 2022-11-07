@@ -26,7 +26,6 @@ import org.springframework.web.socket.sockjs.transport.session.AbstractSockJsSes
 import org.springframework.web.socket.sockjs.transport.session.StubSockJsServiceConfig;
 import org.springframework.web.socket.sockjs.transport.session.TestHttpSockJsSession;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -36,41 +35,41 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
- * Test fixture for {@link AbstractHttpReceivingTransportHandler} and
+ * Test fixture for {@link AbstractHttpReceivingTransportHandler} and subclasses
  * {@link XhrReceivingTransportHandler}.
  *
  * @author Rossen Stoyanchev
  */
-class HttpReceivingTransportHandlerTests extends AbstractHttpRequestTests {
+public class HttpReceivingTransportHandlerTests extends AbstractHttpRequestTests {
 
 	@Test
-	void readMessagesXhr() throws Exception {
-		this.servletRequest.setContent("[\"x\"]".getBytes(UTF_8));
+	public void readMessagesXhr() throws Exception {
+		this.servletRequest.setContent("[\"x\"]".getBytes("UTF-8"));
 		handleRequest(new XhrReceivingTransportHandler());
 
 		assertThat(this.servletResponse.getStatus()).isEqualTo(204);
 	}
 
 	@Test
-	void readMessagesBadContent() throws Exception {
-		this.servletRequest.setContent("".getBytes(UTF_8));
+	public void readMessagesBadContent() throws Exception {
+		this.servletRequest.setContent("".getBytes("UTF-8"));
 		handleRequestAndExpectFailure();
 
-		this.servletRequest.setContent("[\"x]".getBytes(UTF_8));
+		this.servletRequest.setContent("[\"x]".getBytes("UTF-8"));
 		handleRequestAndExpectFailure();
 	}
 
 	@Test
-	void readMessagesNoSession() throws Exception {
+	public void readMessagesNoSession() throws Exception {
 		WebSocketHandler webSocketHandler = mock(WebSocketHandler.class);
 		assertThatIllegalArgumentException().isThrownBy(() ->
 				new XhrReceivingTransportHandler().handleRequest(this.request, this.response, webSocketHandler, null));
 	}
 
 	@Test
-	void delegateMessageException() throws Exception {
+	public void delegateMessageException() throws Exception {
 		StubSockJsServiceConfig sockJsConfig = new StubSockJsServiceConfig();
-		this.servletRequest.setContent("[\"x\"]".getBytes(UTF_8));
+		this.servletRequest.setContent("[\"x\"]".getBytes("UTF-8"));
 
 		WebSocketHandler wsHandler = mock(WebSocketHandler.class);
 		TestHttpSockJsSession session = new TestHttpSockJsSession("1", sockJsConfig, wsHandler, null);

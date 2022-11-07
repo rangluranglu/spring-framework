@@ -19,7 +19,6 @@ package org.springframework.core.io.support;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -105,7 +104,7 @@ class PathMatchingResourcePatternResolverTests {
 				String pattern = "classpath*:org/springframework/core/io/sup*";
 				String pathPrefix = ".+org/springframework/core/io/";
 
-				List<String> actualSubPaths = getSubPathsIgnoringClassFilesEtc(pattern, pathPrefix);
+				List<String> actualSubPaths = getSubPathsIgnoringClassFiles(pattern, pathPrefix);
 
 				// We DO find "support" if the pattern does NOT end with a slash.
 				assertThat(actualSubPaths).containsExactly("support");
@@ -117,7 +116,7 @@ class PathMatchingResourcePatternResolverTests {
 				String pattern = String.format("file:%s/org/springframework/core/io/sup*", testResourcesDir);
 				String pathPrefix = ".+org/springframework/core/io/";
 
-				List<String> actualSubPaths = getSubPathsIgnoringClassFilesEtc(pattern, pathPrefix);
+				List<String> actualSubPaths = getSubPathsIgnoringClassFiles(pattern, pathPrefix);
 
 				// We DO find "support" if the pattern does NOT end with a slash.
 				assertThat(actualSubPaths).containsExactly("support");
@@ -128,18 +127,10 @@ class PathMatchingResourcePatternResolverTests {
 				String pattern = "classpath*:org/springframework/core/io/sup*/";
 				String pathPrefix = ".+org/springframework/core/io/";
 
-				List<String> actualSubPaths = getSubPathsIgnoringClassFilesEtc(pattern, pathPrefix);
+				List<String> actualSubPaths = getSubPathsIgnoringClassFiles(pattern, pathPrefix);
 
-				URL url = getClass().getClassLoader().getResource("org/springframework/core/io/support/EncodedResource.class");
-				if (!url.getProtocol().equals("jar")) {
-					// We do NOT find "support" if the pattern ENDS with a slash if org/springframework/core/io/support
-					// is in the local file system.
-					assertThat(actualSubPaths).isEmpty();
-				}
-				else {
-					// But we do find "support/" if org/springframework/core/io/support is found in a JAR on the classpath.
-					assertThat(actualSubPaths).containsExactly("support/");
-				}
+				// We do NOT find "support" if the pattern ENDS with a slash.
+				assertThat(actualSubPaths).isEmpty();
 			}
 
 			@Test
@@ -148,7 +139,7 @@ class PathMatchingResourcePatternResolverTests {
 				String pattern = String.format("file:%s/org/springframework/core/io/sup*/", testResourcesDir);
 				String pathPrefix = ".+org/springframework/core/io/";
 
-				List<String> actualSubPaths = getSubPathsIgnoringClassFilesEtc(pattern, pathPrefix);
+				List<String> actualSubPaths = getSubPathsIgnoringClassFiles(pattern, pathPrefix);
 
 				// We do NOT find "support" if the pattern ENDS with a slash.
 				assertThat(actualSubPaths).isEmpty();
@@ -159,18 +150,16 @@ class PathMatchingResourcePatternResolverTests {
 				String pattern = "classpath*:org/springframework/core/io/sup*/*.txt";
 				String pathPrefix = ".+org/springframework/core/io/";
 
-				List<String> actualSubPaths = getSubPathsIgnoringClassFilesEtc(pattern, pathPrefix);
+				List<String> actualSubPaths = getSubPathsIgnoringClassFiles(pattern, pathPrefix);
 
 				assertThat(actualSubPaths)
 						.containsExactlyInAnyOrder("support/resource#test1.txt", "support/resource#test2.txt");
 			}
 
-			private List<String> getSubPathsIgnoringClassFilesEtc(String pattern, String pathPrefix) throws IOException {
+			private List<String> getSubPathsIgnoringClassFiles(String pattern, String pathPrefix) throws IOException {
 				return Arrays.stream(resolver.getResources(pattern))
 						.map(resource -> getPath(resource).replaceFirst(pathPrefix, ""))
 						.filter(name -> !name.endsWith(".class"))
-						.filter(name -> !name.endsWith(".kt"))
-						.filter(name -> !name.endsWith(".factories"))
 						.distinct()
 						.sorted()
 						.collect(Collectors.toList());
@@ -203,7 +192,7 @@ class PathMatchingResourcePatternResolverTests {
 			@Test
 			void usingFileProtocolAndAssertingUrlAndUriSyntax() throws Exception {
 				Path testResourcesDir = Paths.get("src/test/resources").toAbsolutePath();
-				String pattern = "file:%s/scanned-resources/**/resource#test1.txt".formatted(testResourcesDir);
+				String pattern = String.format("file:%s/scanned-resources/**/resource#test1.txt", testResourcesDir);
 				Resource[] resources = resolver.getResources(pattern);
 				assertThat(resources).hasSize(1);
 				Resource resource = resources[0];
@@ -267,10 +256,9 @@ class PathMatchingResourcePatternResolverTests {
 		try {
 			Resource[] resources = resolver.getResources(pattern);
 			List<String> actualNames = Arrays.stream(resources)
-					.peek(resource -> assertThat(resource.exists()).as(resource + " exists").isTrue())
 					.map(Resource::getFilename)
 					.sorted()
-					.toList();
+					.collect(Collectors.toList());
 
 			// Uncomment the following if you encounter problems with matching against the file system.
 			// List<String> expectedNames = Arrays.stream(filenames).sorted().toList();
@@ -297,7 +285,7 @@ class PathMatchingResourcePatternResolverTests {
 			List<String> actualSubPaths = Arrays.stream(resources)
 					.map(resource -> getPath(resource).replaceFirst(pathPrefix, ""))
 					.sorted()
-					.toList();
+					.collect(Collectors.toList());
 			assertThat(actualSubPaths).containsExactlyInAnyOrder(subPaths);
 		}
 		catch (IOException ex) {
@@ -314,16 +302,7 @@ class PathMatchingResourcePatternResolverTests {
 		// GraalVM native image which cannot support Path#toFile.
 		//
 		// See: https://github.com/spring-projects/spring-framework/issues/29243
-		if (resource instanceof FileSystemResource fileSystemResource) {
-			return fileSystemResource.getPath();
-		}
-		try {
-			// Fall back to URL in case the resource came from a JAR
-			return resource.getURL().getPath();
-		}
-		catch (IOException ex) {
-			throw new UncheckedIOException(ex);
-		}
+		return ((FileSystemResource) resource).getPath();
 	}
 
 }

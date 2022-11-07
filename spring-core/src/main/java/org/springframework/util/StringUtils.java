@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
-import java.util.stream.Collectors;
 
 import org.springframework.lang.Nullable;
 
@@ -221,15 +220,24 @@ public abstract class StringUtils {
 	 * @param str the {@code String} to check
 	 * @return the trimmed {@code String}
 	 * @see java.lang.Character#isWhitespace
-	 * @deprecated in favor of {@link String#strip()}
 	 */
-	@Deprecated
 	public static String trimWhitespace(String str) {
 		if (!hasLength(str)) {
 			return str;
 		}
 
-		return str.strip();
+		int beginIndex = 0;
+		int endIndex = str.length() - 1;
+
+		while (beginIndex <= endIndex && Character.isWhitespace(str.charAt(beginIndex))) {
+			beginIndex++;
+		}
+
+		while (endIndex > beginIndex && Character.isWhitespace(str.charAt(endIndex))) {
+			endIndex--;
+		}
+
+		return str.substring(beginIndex, endIndex + 1);
 	}
 
 	/**
@@ -277,15 +285,17 @@ public abstract class StringUtils {
 	 * @param str the {@code String} to check
 	 * @return the trimmed {@code String}
 	 * @see java.lang.Character#isWhitespace
-	 * @deprecated in favor of {@link String#stripLeading()}
 	 */
-	@Deprecated
 	public static String trimLeadingWhitespace(String str) {
 		if (!hasLength(str)) {
 			return str;
 		}
 
-		return str.stripLeading();
+		int beginIdx = 0;
+		while (beginIdx < str.length() && Character.isWhitespace(str.charAt(beginIdx))) {
+			beginIdx++;
+		}
+		return str.substring(beginIdx);
 	}
 
 	/**
@@ -293,15 +303,17 @@ public abstract class StringUtils {
 	 * @param str the {@code String} to check
 	 * @return the trimmed {@code String}
 	 * @see java.lang.Character#isWhitespace
-	 * @deprecated in favor of {@link String#stripTrailing()}
 	 */
-	@Deprecated
 	public static String trimTrailingWhitespace(String str) {
 		if (!hasLength(str)) {
 			return str;
 		}
 
-		return str.stripTrailing();
+		int endIdx = str.length() - 1;
+		while (endIdx >= 0 && Character.isWhitespace(str.charAt(endIdx))) {
+			endIdx--;
+		}
+		return str.substring(0, endIdx + 1);
 	}
 
 	/**
@@ -551,24 +563,6 @@ public abstract class StringUtils {
 	 * @return the uncapitalized {@code String}
 	 */
 	public static String uncapitalize(String str) {
-		return changeFirstCharacterCase(str, false);
-	}
-
-	/**
-	 * Uncapitalize a {@code String} in JavaBeans property format,
-	 * changing the first letter to lower case as per
-	 * {@link Character#toLowerCase(char)}, unless the initial two
-	 * letters are upper case in direct succession.
-	 * @param str the {@code String} to uncapitalize
-	 * @return the uncapitalized {@code String}
-	 * @since 6.0
-	 * @see java.beans.Introspector#decapitalize(String)
-	 */
-	public static String uncapitalizeAsProperty(String str) {
-		if (!hasLength(str) || (str.length() > 1 && Character.isUpperCase(str.charAt(0)) &&
-				Character.isUpperCase(str.charAt(1)))) {
-			return str;
-		}
 		return changeFirstCharacterCase(str, false);
 	}
 
@@ -840,14 +834,15 @@ public abstract class StringUtils {
 	 */
 	@Nullable
 	public static Locale parseLocale(String localeValue) {
-		if (!localeValue.contains("_") && !localeValue.contains(" ")) {
+		String[] tokens = tokenizeLocaleSource(localeValue);
+		if (tokens.length == 1) {
 			validateLocalePart(localeValue);
 			Locale resolved = Locale.forLanguageTag(localeValue);
 			if (resolved.getLanguage().length() > 0) {
 				return resolved;
 			}
 		}
-		return parseLocaleString(localeValue);
+		return parseLocaleTokens(localeValue, tokens);
 	}
 
 	/**
@@ -866,35 +861,38 @@ public abstract class StringUtils {
 	 */
 	@Nullable
 	public static Locale parseLocaleString(String localeString) {
-		if (localeString.equals("")) {
-			return null;
+		return parseLocaleTokens(localeString, tokenizeLocaleSource(localeString));
+	}
+
+	private static String[] tokenizeLocaleSource(String localeSource) {
+		return tokenizeToStringArray(localeSource, "_ ", false, false);
+	}
+
+	@Nullable
+	private static Locale parseLocaleTokens(String localeString, String[] tokens) {
+		String language = (tokens.length > 0 ? tokens[0] : "");
+		String country = (tokens.length > 1 ? tokens[1] : "");
+		validateLocalePart(language);
+		validateLocalePart(country);
+
+		String variant = "";
+		if (tokens.length > 2) {
+			// There is definitely a variant, and it is everything after the country
+			// code sans the separator between the country code and the variant.
+			int endIndexOfCountryCode = localeString.indexOf(country, language.length()) + country.length();
+			// Strip off any leading '_' and whitespace, what's left is the variant.
+			variant = trimLeadingWhitespace(localeString.substring(endIndexOfCountryCode));
+			if (variant.startsWith("_")) {
+				variant = trimLeadingCharacter(variant, '_');
+			}
 		}
-		String delimiter = "_";
-		if (!localeString.contains("_") && localeString.contains(" ")) {
-			delimiter = " ";
+
+		if (variant.isEmpty() && country.startsWith("#")) {
+			variant = country;
+			country = "";
 		}
-		final String[] tokens = localeString.split(delimiter, -1);
-		if (tokens.length == 1) {
-			final String language = tokens[0];
-			validateLocalePart(language);
-			return new Locale(language);
-		}
-		else if (tokens.length == 2) {
-			final String language = tokens[0];
-			validateLocalePart(language);
-			final String country = tokens[1];
-			validateLocalePart(country);
-			return new Locale(language, country);
-		}
-		else if (tokens.length > 2) {
-			final String language = tokens[0];
-			validateLocalePart(language);
-			final String country = tokens[1];
-			validateLocalePart(country);
-			final String variant = Arrays.stream(tokens).skip(2).collect(Collectors.joining(delimiter));
-			return new Locale(language, country, variant);
-		}
-		throw new IllegalArgumentException("Invalid locale format: '" + localeString + "'");
+
+		return (language.length() > 0 ? new Locale(language, country, variant) : null);
 	}
 
 	private static void validateLocalePart(String localePart) {
@@ -905,6 +903,18 @@ public abstract class StringUtils {
 						"Locale part \"" + localePart + "\" contains invalid characters");
 			}
 		}
+	}
+
+	/**
+	 * Determine the RFC 3066 compliant language tag,
+	 * as used for the HTTP "Accept-Language" header.
+	 * @param locale the Locale to transform to a language tag
+	 * @return the RFC 3066 compliant language tag as {@code String}
+	 * @deprecated as of 5.0.4, in favor of {@link Locale#toLanguageTag()}
+	 */
+	@Deprecated
+	public static String toLanguageTag(Locale locale) {
+		return locale.getLanguage() + (hasText(locale.getCountry()) ? "-" + locale.getCountry() : "");
 	}
 
 	/**
@@ -990,6 +1000,37 @@ public abstract class StringUtils {
 		System.arraycopy(array1, 0, newArr, 0, array1.length);
 		System.arraycopy(array2, 0, newArr, array1.length, array2.length);
 		return newArr;
+	}
+
+	/**
+	 * Merge the given {@code String} arrays into one, with overlapping
+	 * array elements only included once.
+	 * <p>The order of elements in the original arrays is preserved
+	 * (with the exception of overlapping elements, which are only
+	 * included on their first occurrence).
+	 * @param array1 the first array (can be {@code null})
+	 * @param array2 the second array (can be {@code null})
+	 * @return the new array ({@code null} if both given arrays were {@code null})
+	 * @deprecated as of 4.3.15, in favor of manual merging via {@link LinkedHashSet}
+	 * (with every entry included at most once, even entries within the first array)
+	 */
+	@Deprecated
+	@Nullable
+	public static String[] mergeStringArrays(@Nullable String[] array1, @Nullable String[] array2) {
+		if (ObjectUtils.isEmpty(array1)) {
+			return array2;
+		}
+		if (ObjectUtils.isEmpty(array2)) {
+			return array1;
+		}
+
+		List<String> result = new ArrayList<>(Arrays.asList(array1));
+		for (String str : array2) {
+			if (!result.contains(str)) {
+				result.add(str);
+			}
+		}
+		return toStringArray(result);
 	}
 
 	/**

@@ -16,11 +16,9 @@
 
 package org.springframework.messaging.simp.stomp;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +38,8 @@ import org.springframework.messaging.tcp.TcpConnection;
 import org.springframework.messaging.tcp.TcpConnectionHandler;
 import org.springframework.messaging.tcp.TcpOperations;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureTask;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -166,7 +166,7 @@ class StompBrokerRelayMessageHandlerTests {
 		this.tcpClient.handleMessage(MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()));
 
 		// Run the messageCountTask to clear the message count
-		verify(this.brokerRelay.getTaskScheduler()).scheduleWithFixedDelay(this.messageCountTaskCaptor.capture(), eq(Duration.ofMillis(5000L)));
+		verify(this.brokerRelay.getTaskScheduler()).scheduleWithFixedDelay(this.messageCountTaskCaptor.capture(), eq(5000L));
 		this.messageCountTaskCaptor.getValue().run();
 
 		accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
@@ -308,8 +308,10 @@ class StompBrokerRelayMessageHandlerTests {
 	}
 
 
-	private static CompletableFuture<Void> getVoidFuture() {
-		return CompletableFuture.completedFuture(null);
+	private static ListenableFutureTask<Void> getVoidFuture() {
+		ListenableFutureTask<Void> futureTask = new ListenableFutureTask<>(() -> null);
+		futureTask.run();
+		return futureTask;
 	}
 
 
@@ -333,22 +335,21 @@ class StompBrokerRelayMessageHandlerTests {
 		}
 
 		@Override
-		public CompletableFuture<Void> connectAsync(TcpConnectionHandler<byte[]> handler) {
+		public ListenableFuture<Void> connect(TcpConnectionHandler<byte[]> handler) {
 			this.connectionHandler = handler;
 			handler.afterConnected(this.connection);
 			return getVoidFuture();
 		}
 
 		@Override
-		public CompletableFuture<Void> connectAsync(TcpConnectionHandler<byte[]> handler,
-				ReconnectStrategy reconnectStrategy) {
+		public ListenableFuture<Void> connect(TcpConnectionHandler<byte[]> handler, ReconnectStrategy strategy) {
 			this.connectionHandler = handler;
 			handler.afterConnected(this.connection);
 			return getVoidFuture();
 		}
 
 		@Override
-		public CompletableFuture<Void> shutdownAsync() {
+		public ListenableFuture<Void> shutdown() {
 			return getVoidFuture();
 		}
 
@@ -369,7 +370,7 @@ class StompBrokerRelayMessageHandlerTests {
 		}
 
 		@Override
-		public CompletableFuture<Void> sendAsync(Message<byte[]> message) {
+		public ListenableFuture<Void> send(Message<byte[]> message) {
 			this.messages.add(message);
 			return getVoidFuture();
 		}

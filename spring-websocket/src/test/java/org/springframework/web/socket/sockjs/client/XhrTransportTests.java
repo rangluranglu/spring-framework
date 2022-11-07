@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package org.springframework.web.socket.sockjs.client;
 
 import java.net.URI;
-import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +25,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.concurrent.SettableListenableFuture;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketHandler;
@@ -39,21 +39,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
- * Unit tests for {@link AbstractXhrTransport}.
+ * Unit tests for
+ * {@link org.springframework.web.socket.sockjs.client.AbstractXhrTransport}.
  *
  * @author Rossen Stoyanchev
  */
-class XhrTransportTests {
+public class XhrTransportTests {
 
 	@Test
-	void infoResponse() throws Exception {
+	public void infoResponse() throws Exception {
 		TestXhrTransport transport = new TestXhrTransport();
 		transport.infoResponseToReturn = new ResponseEntity<>("body", HttpStatus.OK);
 		assertThat(transport.executeInfoRequest(new URI("https://example.com/info"), null)).isEqualTo("body");
 	}
 
 	@Test
-	void infoResponseError() throws Exception {
+	public void infoResponseError() throws Exception {
 		TestXhrTransport transport = new TestXhrTransport();
 		transport.infoResponseToReturn = new ResponseEntity<>("body", HttpStatus.BAD_REQUEST);
 		assertThatExceptionOfType(HttpServerErrorException.class).isThrownBy(() ->
@@ -61,7 +62,7 @@ class XhrTransportTests {
 	}
 
 	@Test
-	void sendMessage() throws Exception {
+	public void sendMessage() throws Exception {
 		HttpHeaders requestHeaders = new HttpHeaders();
 		requestHeaders.set("foo", "bar");
 		requestHeaders.setContentType(MediaType.APPLICATION_JSON);
@@ -75,7 +76,7 @@ class XhrTransportTests {
 	}
 
 	@Test
-	void sendMessageError() throws Exception {
+	public void sendMessageError() throws Exception {
 		TestXhrTransport transport = new TestXhrTransport();
 		transport.sendMessageResponseToReturn = new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 		URI url = new URI("https://example.com");
@@ -84,8 +85,7 @@ class XhrTransportTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
-	void connect() throws Exception {
+	public void connect() throws Exception {
 		HttpHeaders handshakeHeaders = new HttpHeaders();
 		handshakeHeaders.setOrigin("foo");
 
@@ -142,7 +142,7 @@ class XhrTransportTests {
 		@Override
 		protected void connectInternal(TransportRequest request, WebSocketHandler handler, URI receiveUrl,
 				HttpHeaders handshakeHeaders, XhrClientSockJsSession session,
-				CompletableFuture<WebSocketSession> connectFuture) {
+				SettableListenableFuture<WebSocketSession> connectFuture) {
 
 			this.actualHandshakeHeaders = handshakeHeaders;
 			this.actualSession = session;

@@ -17,14 +17,11 @@
 package org.springframework.format.datetime.standard;
 
 import java.text.ParseException;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
-import java.time.YearMonth;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -41,7 +38,6 @@ import org.springframework.util.ObjectUtils;
  *
  * @author Juergen Hoeller
  * @author Sam Brannen
- * @author Kazuki Shimizu
  * @since 4.0
  * @see DateTimeContextHolder#getFormatter
  * @see java.time.LocalDate#parse(CharSequence, java.time.format.DateTimeFormatter)
@@ -50,8 +46,6 @@ import org.springframework.util.ObjectUtils;
  * @see java.time.ZonedDateTime#parse(CharSequence, java.time.format.DateTimeFormatter)
  * @see java.time.OffsetDateTime#parse(CharSequence, java.time.format.DateTimeFormatter)
  * @see java.time.OffsetTime#parse(CharSequence, java.time.format.DateTimeFormatter)
- * @see java.time.YearMonth#parse(CharSequence, java.time.format.DateTimeFormatter)
- * @see java.time.MonthDay#parse(CharSequence, java.time.format.DateTimeFormatter)
  */
 public final class TemporalAccessorParser implements Parser<TemporalAccessor> {
 
@@ -105,15 +99,6 @@ public final class TemporalAccessorParser implements Parser<TemporalAccessor> {
 					}
 				}
 			}
-			else {
-				// Fallback to ISO-based default java.time type parsing
-				try {
-					return defaultParse(text);
-				}
-				catch (DateTimeParseException ignoredException) {
-					// Ignore fallback parsing exception like above
-				}
-			}
 			if (this.source != null) {
 				throw new DateTimeParseException(
 						String.format("Unable to parse date time value \"%s\" using configuration from %s", text, this.source),
@@ -126,10 +111,7 @@ public final class TemporalAccessorParser implements Parser<TemporalAccessor> {
 
 	private TemporalAccessor doParse(String text, Locale locale, DateTimeFormatter formatter) throws DateTimeParseException {
 		DateTimeFormatter formatterToUse = DateTimeContextHolder.getFormatter(formatter, locale);
-		if (Instant.class == this.temporalAccessorType) {
-			return formatterToUse.parse(text, Instant::from);
-		}
-		else if (LocalDate.class == this.temporalAccessorType) {
+		if (LocalDate.class == this.temporalAccessorType) {
 			return LocalDate.parse(text, formatterToUse);
 		}
 		else if (LocalTime.class == this.temporalAccessorType) {
@@ -146,45 +128,6 @@ public final class TemporalAccessorParser implements Parser<TemporalAccessor> {
 		}
 		else if (OffsetTime.class == this.temporalAccessorType) {
 			return OffsetTime.parse(text, formatterToUse);
-		}
-		else if (YearMonth.class == this.temporalAccessorType) {
-			return YearMonth.parse(text, formatterToUse);
-		}
-		else if (MonthDay.class == this.temporalAccessorType) {
-			return MonthDay.parse(text, formatterToUse);
-		}
-		else {
-			throw new IllegalStateException("Unsupported TemporalAccessor type: " + this.temporalAccessorType);
-		}
-	}
-
-	private TemporalAccessor defaultParse(String text) throws DateTimeParseException {
-		if (Instant.class == this.temporalAccessorType) {
-			return Instant.parse(text);
-		}
-		else if (LocalDate.class == this.temporalAccessorType) {
-			return LocalDate.parse(text);
-		}
-		else if (LocalTime.class == this.temporalAccessorType) {
-			return LocalTime.parse(text);
-		}
-		else if (LocalDateTime.class == this.temporalAccessorType) {
-			return LocalDateTime.parse(text);
-		}
-		else if (ZonedDateTime.class == this.temporalAccessorType) {
-			return ZonedDateTime.parse(text);
-		}
-		else if (OffsetDateTime.class == this.temporalAccessorType) {
-			return OffsetDateTime.parse(text);
-		}
-		else if (OffsetTime.class == this.temporalAccessorType) {
-			return OffsetTime.parse(text);
-		}
-		else if (YearMonth.class == this.temporalAccessorType) {
-			return YearMonth.parse(text);
-		}
-		else if (MonthDay.class == this.temporalAccessorType) {
-			return MonthDay.parse(text);
 		}
 		else {
 			throw new IllegalStateException("Unsupported TemporalAccessor type: " + this.temporalAccessorType);

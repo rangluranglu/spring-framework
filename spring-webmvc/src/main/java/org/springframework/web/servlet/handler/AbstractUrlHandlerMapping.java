@@ -23,8 +23,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
@@ -34,7 +34,6 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.web.filter.ServerHttpObservationFilter;
 import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
@@ -76,7 +75,7 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 
 
 	@Override
-	public void setPatternParser(@Nullable PathPatternParser patternParser) {
+	public void setPatternParser(PathPatternParser patternParser) {
 		Assert.state(this.handlerMap.isEmpty(),
 				"PathPatternParser must be set before the initialization of " +
 						"the handler map via ApplicationContextAware#setApplicationContext.");
@@ -105,10 +104,7 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 	 * Whether to match to URLs irrespective of the presence of a trailing slash.
 	 * If enabled a URL pattern such as "/users" also matches to "/users/".
 	 * <p>The default value is {@code false}.
-	 * @deprecated as of 6.0, see
-	 * {@link PathPatternParser#setMatchOptionalTrailingSeparator(boolean)}
 	 */
-	@Deprecated(since = "6.0")
 	public void setUseTrailingSlashMatch(boolean useTrailingSlashMatch) {
 		this.useTrailingSlashMatch = useTrailingSlashMatch;
 		if (getPatternParser() != null) {
@@ -166,7 +162,8 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 			}
 			if (rawHandler != null) {
 				// Bean name or resolved handler?
-				if (rawHandler instanceof String handlerName) {
+				if (rawHandler instanceof String) {
+					String handlerName = (String) rawHandler;
 					rawHandler = obtainApplicationContext().getBean(handlerName);
 				}
 				validateHandler(rawHandler, request);
@@ -213,7 +210,8 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 		}
 		PathPattern pattern = matches.get(0);
 		handler = this.pathPatternHandlerMap.get(pattern);
-		if (handler instanceof String handlerName) {
+		if (handler instanceof String) {
+			String handlerName = (String) handler;
 			handler = obtainApplicationContext().getBean(handlerName);
 		}
 		validateHandler(handler, request);
@@ -272,7 +270,8 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 				}
 			}
 			// Bean name or resolved handler?
-			if (handler instanceof String handlerName) {
+			if (handler instanceof String) {
+				String handlerName = (String) handler;
 				handler = obtainApplicationContext().getBean(handlerName);
 			}
 			validateHandler(handler, request);
@@ -303,7 +302,8 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 		Object handler = this.handlerMap.get(urlPath);
 		if (handler != null) {
 			// Bean name or resolved handler?
-			if (handler instanceof String handlerName) {
+			if (handler instanceof String) {
+				String handlerName = (String) handler;
 				handler = obtainApplicationContext().getBean(handlerName);
 			}
 			validateHandler(handler, request);
@@ -356,8 +356,6 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 			HttpServletRequest request) {
 
 		request.setAttribute(BEST_MATCHING_PATTERN_ATTRIBUTE, bestMatchingPattern);
-		ServerHttpObservationFilter.findObservationContext(request)
-				.ifPresent(context -> context.setPathPattern(bestMatchingPattern));
 		request.setAttribute(PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE, pathWithinMapping);
 	}
 
@@ -415,7 +413,8 @@ public abstract class AbstractUrlHandlerMapping extends AbstractHandlerMapping i
 		Object resolvedHandler = handler;
 
 		// Eagerly resolve handler if referencing singleton via name.
-		if (!this.lazyInitHandlers && handler instanceof String handlerName) {
+		if (!this.lazyInitHandlers && handler instanceof String) {
+			String handlerName = (String) handler;
 			ApplicationContext applicationContext = obtainApplicationContext();
 			if (applicationContext.isSingleton(handlerName)) {
 				resolvedHandler = applicationContext.getBean(handlerName);

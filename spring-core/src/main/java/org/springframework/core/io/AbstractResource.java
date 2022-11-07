@@ -25,7 +25,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.util.function.Supplier;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -60,7 +59,10 @@ public abstract class AbstractResource implements Resource {
 				return getFile().exists();
 			}
 			catch (IOException ex) {
-				debug(() -> "Could not retrieve File for existence check of " + getDescription(), ex);
+				Log logger = LogFactory.getLog(getClass());
+				if (logger.isDebugEnabled()) {
+					logger.debug("Could not retrieve File for existence check of " + getDescription(), ex);
+				}
 			}
 		}
 		// Fall back to stream existence: can we open the stream?
@@ -69,7 +71,10 @@ public abstract class AbstractResource implements Resource {
 			return true;
 		}
 		catch (Throwable ex) {
-			debug(() -> "Could not retrieve InputStream for existence check of " + getDescription(), ex);
+			Log logger = LogFactory.getLog(getClass());
+			if (logger.isDebugEnabled()) {
+				logger.debug("Could not retrieve InputStream for existence check of " + getDescription(), ex);
+			}
 			return false;
 		}
 	}
@@ -113,13 +118,14 @@ public abstract class AbstractResource implements Resource {
 	 * by {@link #getURL()}.
 	 */
 	@Override
+	@SuppressWarnings("deprecation")
 	public URI getURI() throws IOException {
 		URL url = getURL();
 		try {
 			return ResourceUtils.toURI(url);
 		}
 		catch (URISyntaxException ex) {
-			throw new IOException("Invalid URI [" + url + "]", ex);
+			throw new org.springframework.core.NestedIOException("Invalid URI [" + url + "]", ex);
 		}
 	}
 
@@ -168,7 +174,10 @@ public abstract class AbstractResource implements Resource {
 				is.close();
 			}
 			catch (IOException ex) {
-				debug(() -> "Could not close content-length InputStream for " + getDescription(), ex);
+				Log logger = LogFactory.getLog(getClass());
+				if (logger.isDebugEnabled()) {
+					logger.debug("Could not close content-length InputStream for " + getDescription(), ex);
+				}
 			}
 		}
 	}
@@ -247,13 +256,6 @@ public abstract class AbstractResource implements Resource {
 	@Override
 	public String toString() {
 		return getDescription();
-	}
-
-	private void debug(Supplier<String> message, Throwable ex) {
-		Log logger = LogFactory.getLog(getClass());
-		if (logger.isDebugEnabled()) {
-			logger.debug(message.get(), ex);
-		}
 	}
 
 }

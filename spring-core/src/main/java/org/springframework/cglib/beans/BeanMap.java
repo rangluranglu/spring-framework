@@ -316,7 +316,7 @@ abstract public class BeanMap implements Map {
      */
     public String toString()
     {
-        StringBuilder sb = new StringBuilder();
+        StringBuffer sb = new StringBuffer();
         sb.append('{');
         for (Iterator it = keySet().iterator(); it.hasNext();) {
             Object key = it.next();

@@ -22,7 +22,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -977,8 +976,8 @@ public abstract class AnnotationUtils {
 		for (Map.Entry<String, Object> attributeEntry : attributes.entrySet()) {
 			String attributeName = attributeEntry.getKey();
 			Object value = attributeEntry.getValue();
-			if (value instanceof DefaultValueHolder defaultValueHolder) {
-				value = defaultValueHolder.defaultValue;
+			if (value instanceof DefaultValueHolder) {
+				value = ((DefaultValueHolder) value).defaultValue;
 				attributes.put(attributeName,
 						adaptValue(annotatedElement, value, classValuesAsString));
 			}
@@ -987,7 +986,7 @@ public abstract class AnnotationUtils {
 
 	private static Object getAttributeValueForMirrorResolution(Method attribute, Object attributes) {
 		Object result = ((AnnotationAttributes) attributes).get(attribute.getName());
-		return (result instanceof DefaultValueHolder defaultValueHolder ? defaultValueHolder.defaultValue : result);
+		return (result instanceof DefaultValueHolder ? ((DefaultValueHolder) result).defaultValue : result);
 	}
 
 	@Nullable
@@ -995,10 +994,11 @@ public abstract class AnnotationUtils {
 			@Nullable Object annotatedElement, @Nullable Object value, boolean classValuesAsString) {
 
 		if (classValuesAsString) {
-			if (value instanceof Class<?> clazz) {
-				return clazz.getName();
+			if (value instanceof Class) {
+				return ((Class<?>) value).getName();
 			}
-			if (value instanceof Class<?>[] classes) {
+			if (value instanceof Class[]) {
+				Class<?>[] classes = (Class<?>[]) value;
 				String[] names = new String[classes.length];
 				for (int i = 0; i < classes.length; i++) {
 					names[i] = classes[i].getName();
@@ -1006,10 +1006,12 @@ public abstract class AnnotationUtils {
 				return names;
 			}
 		}
-		if (value instanceof Annotation annotation) {
+		if (value instanceof Annotation) {
+			Annotation annotation = (Annotation) value;
 			return MergedAnnotation.from(annotatedElement, annotation).synthesize();
 		}
-		if (value instanceof Annotation[] annotations) {
+		if (value instanceof Annotation[]) {
+			Annotation[] annotations = (Annotation[]) value;
 			Annotation[] synthesized = (Annotation[]) Array.newInstance(
 					annotations.getClass().getComponentType(), annotations.length);
 			for (int i = 0; i < annotations.length; i++) {
@@ -1075,8 +1077,8 @@ public abstract class AnnotationUtils {
 	 * @param ex the throwable to inspect
 	 */
 	static void rethrowAnnotationConfigurationException(Throwable ex) {
-		if (ex instanceof AnnotationConfigurationException exception) {
-			throw exception;
+		if (ex instanceof AnnotationConfigurationException) {
+			throw (AnnotationConfigurationException) ex;
 		}
 	}
 
@@ -1099,7 +1101,7 @@ public abstract class AnnotationUtils {
 		rethrowAnnotationConfigurationException(ex);
 		IntrospectionFailureLogger logger = IntrospectionFailureLogger.INFO;
 		boolean meta = false;
-		if (element instanceof Class<?> clazz && Annotation.class.isAssignableFrom(clazz)) {
+		if (element instanceof Class && Annotation.class.isAssignableFrom((Class<?>) element)) {
 			// Meta-annotation or (default) value lookup on an annotation type
 			logger = IntrospectionFailureLogger.DEBUG;
 			meta = true;
@@ -1289,15 +1291,7 @@ public abstract class AnnotationUtils {
 	 * @since 5.3.23
 	 */
 	public static boolean isSynthesizedAnnotation(@Nullable Annotation annotation) {
-		try {
-			return ((annotation != null) && Proxy.isProxyClass(annotation.getClass()) &&
-					(Proxy.getInvocationHandler(annotation) instanceof SynthesizedMergedAnnotationInvocationHandler));
-		}
-		catch (SecurityException ex) {
-			// Security settings disallow reflective access to the InvocationHandler:
-			// assume the annotation has not been synthesized by Spring.
-			return false;
-		}
+		return (annotation instanceof SynthesizedAnnotation);
 	}
 
 	/**

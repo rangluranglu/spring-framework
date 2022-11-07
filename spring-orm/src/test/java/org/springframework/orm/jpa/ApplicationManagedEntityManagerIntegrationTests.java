@@ -19,12 +19,11 @@ package org.springframework.orm.jpa;
 import java.lang.reflect.Proxy;
 import java.util.List;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
-import jakarta.persistence.TransactionRequiredException;
+import javax.persistence.EntityManager;
+import javax.persistence.Query;
+import javax.persistence.TransactionRequiredException;
+
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledOnJre;
-import org.junit.jupiter.api.condition.JRE;
 
 import org.springframework.orm.jpa.domain.Person;
 
@@ -39,7 +38,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Juergen Hoeller
  * @since 2.0
  */
-@DisabledOnJre(value = JRE.JAVA_18)
 public class ApplicationManagedEntityManagerIntegrationTests extends AbstractEntityManagerFactoryIntegrationTests {
 
 	@Test

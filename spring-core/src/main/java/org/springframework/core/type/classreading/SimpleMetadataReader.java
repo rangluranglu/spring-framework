@@ -50,13 +50,14 @@ final class SimpleMetadataReader implements MetadataReader {
 		this.annotationMetadata = visitor.getMetadata();
 	}
 
+	@SuppressWarnings("deprecation")
 	private static ClassReader getClassReader(Resource resource) throws IOException {
 		try (InputStream is = resource.getInputStream()) {
 			try {
 				return new ClassReader(is);
 			}
 			catch (IllegalArgumentException ex) {
-				throw new IOException("ASM ClassReader failed to parse class file - " +
+				throw new org.springframework.core.NestedIOException("ASM ClassReader failed to parse class file - " +
 						"probably due to a new Java class file version that isn't supported yet: " + resource, ex);
 			}
 		}

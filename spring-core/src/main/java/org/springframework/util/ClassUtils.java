@@ -16,6 +16,7 @@
 
 package org.springframework.util;
 
+import java.beans.Introspector;
 import java.io.Closeable;
 import java.io.Externalizable;
 import java.io.Serializable;
@@ -156,7 +157,7 @@ public abstract class ClassUtils {
 		Class<?>[] javaLanguageInterfaceArray = {Serializable.class, Externalizable.class,
 				Closeable.class, AutoCloseable.class, Cloneable.class, Comparable.class};
 		registerCommonClasses(javaLanguageInterfaceArray);
-		javaLanguageInterfaces = Set.of(javaLanguageInterfaceArray);
+		javaLanguageInterfaces = new HashSet<>(Arrays.asList(javaLanguageInterfaceArray));
 	}
 
 
@@ -777,7 +778,7 @@ public abstract class ClassUtils {
 	 * conflicting method signatures (or a similar constraint is violated)
 	 * @see java.lang.reflect.Proxy#getProxyClass
 	 */
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings("deprecation")  // on JDK 9
 	public static Class<?> createCompositeInterface(Class<?>[] interfaces, @Nullable ClassLoader classLoader) {
 		Assert.notEmpty(interfaces, "Interface array must not be empty");
 		return Proxy.getProxyClass(classLoader, interfaces);
@@ -831,26 +832,14 @@ public abstract class ClassUtils {
 	}
 
 	/**
-	 * Determine if the supplied class is a static class.
-	 * @return {@code true} if the supplied class is a static class
-	 * @since 6.0
-	 * @see Modifier#isStatic(int)
-	 * @see #isInnerClass(Class)
-	 */
-	public static boolean isStaticClass(Class<?> clazz) {
-		return Modifier.isStatic(clazz.getModifiers());
-	}
-
-	/**
 	 * Determine if the supplied class is an <em>inner class</em>,
 	 * i.e. a non-static member of an enclosing class.
 	 * @return {@code true} if the supplied class is an inner class
 	 * @since 5.0.5
 	 * @see Class#isMemberClass()
-	 * @see #isStaticClass(Class)
 	 */
 	public static boolean isInnerClass(Class<?> clazz) {
-		return (clazz.isMemberClass() && !isStaticClass(clazz));
+		return (clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers()));
 	}
 
 	/**
@@ -996,13 +985,13 @@ public abstract class ClassUtils {
 	 * property format. Strips the outer class name in case of a nested class.
 	 * @param clazz the class
 	 * @return the short name rendered in a standard JavaBeans property format
-	 * @see StringUtils#uncapitalizeAsProperty(String)
+	 * @see java.beans.Introspector#decapitalize(String)
 	 */
 	public static String getShortNameAsProperty(Class<?> clazz) {
 		String shortName = getShortName(clazz);
 		int dotIndex = shortName.lastIndexOf(PACKAGE_SEPARATOR);
 		shortName = (dotIndex != -1 ? shortName.substring(dotIndex + 1) : shortName);
-		return StringUtils.uncapitalizeAsProperty(shortName);
+		return Introspector.decapitalize(shortName);
 	}
 
 	/**

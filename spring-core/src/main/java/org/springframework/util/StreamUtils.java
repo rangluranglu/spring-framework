@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.util;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FilterInputStream;
 import java.io.FilterOutputStream;
@@ -24,6 +25,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.nio.charset.Charset;
 
@@ -32,7 +34,7 @@ import org.springframework.lang.Nullable;
 /**
  * Simple utility methods for dealing with streams. The copy methods of this class are
  * similar to those defined in {@link FileCopyUtils} except that all affected streams are
- * left open when done. All copy methods use a block size of 8192 bytes.
+ * left open when done. All copy methods use a block size of 4096 bytes.
  *
  * <p>Mainly for use within the framework, but also useful for application code.
  *
@@ -47,7 +49,7 @@ public abstract class StreamUtils {
 	/**
 	 * The default buffer size used when copying bytes.
 	 */
-	public static final int BUFFER_SIZE = 8192;
+	public static final int BUFFER_SIZE = 4096;
 
 	private static final byte[] EMPTY_CONTENT = new byte[0];
 
@@ -61,10 +63,12 @@ public abstract class StreamUtils {
 	 */
 	public static byte[] copyToByteArray(@Nullable InputStream in) throws IOException {
 		if (in == null) {
-			return EMPTY_CONTENT;
+			return new byte[0];
 		}
 
-		return in.readAllBytes();
+		ByteArrayOutputStream out = new ByteArrayOutputStream(BUFFER_SIZE);
+		copy(in, out);
+		return out.toByteArray();
 	}
 
 	/**
@@ -80,7 +84,7 @@ public abstract class StreamUtils {
 			return "";
 		}
 
-		StringBuilder out = new StringBuilder();
+		StringBuilder out = new StringBuilder(BUFFER_SIZE);
 		InputStreamReader reader = new InputStreamReader(in, charset);
 		char[] buffer = new char[BUFFER_SIZE];
 		int charsRead;
@@ -101,8 +105,14 @@ public abstract class StreamUtils {
 	public static String copyToString(ByteArrayOutputStream baos, Charset charset) {
 		Assert.notNull(baos, "No ByteArrayOutputStream specified");
 		Assert.notNull(charset, "No Charset specified");
-
-		return baos.toString(charset);
+		try {
+			// Can be replaced with toString(Charset) call in Java 10+
+			return baos.toString(charset.name());
+		}
+		catch (UnsupportedEncodingException ex) {
+			// Should never happen
+			throw new IllegalArgumentException("Invalid charset name: " + charset, ex);
+		}
 	}
 
 	/**
@@ -150,9 +160,15 @@ public abstract class StreamUtils {
 		Assert.notNull(in, "No InputStream specified");
 		Assert.notNull(out, "No OutputStream specified");
 
-		int count = (int) in.transferTo(out);
+		int byteCount = 0;
+		byte[] buffer = new byte[BUFFER_SIZE];
+		int bytesRead;
+		while ((bytesRead = in.read(buffer)) != -1) {
+			out.write(buffer, 0, bytesRead);
+			byteCount += bytesRead;
+		}
 		out.flush();
-		return count;
+		return byteCount;
 	}
 
 	/**
@@ -206,18 +222,22 @@ public abstract class StreamUtils {
 	 */
 	public static int drain(InputStream in) throws IOException {
 		Assert.notNull(in, "No InputStream specified");
-		return (int) in.transferTo(OutputStream.nullOutputStream());
+		byte[] buffer = new byte[BUFFER_SIZE];
+		int bytesRead = -1;
+		int byteCount = 0;
+		while ((bytesRead = in.read(buffer)) != -1) {
+			byteCount += bytesRead;
+		}
+		return byteCount;
 	}
 
 	/**
 	 * Return an efficient empty {@link InputStream}.
-	 * @return an InputStream which contains no bytes
+	 * @return a {@link ByteArrayInputStream} based on an empty byte array
 	 * @since 4.2.2
-	 * @deprecated as of 6.0 in favor of {@link InputStream#nullInputStream()}
 	 */
-	@Deprecated(since = "6.0")
 	public static InputStream emptyInput() {
-		return InputStream.nullInputStream();
+		return new ByteArrayInputStream(EMPTY_CONTENT);
 	}
 
 	/**

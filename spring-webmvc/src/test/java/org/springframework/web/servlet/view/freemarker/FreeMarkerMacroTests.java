@@ -23,12 +23,13 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletResponse;
+
 import freemarker.template.Configuration;
 import freemarker.template.SimpleHash;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +58,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Sam Brannen
  * @since 25.01.2005
  */
-@SuppressWarnings("deprecation")
 public class FreeMarkerMacroTests {
 
 	private static final String TEMPLATE_FILE = "test.ftl";
@@ -80,6 +80,7 @@ public class FreeMarkerMacroTests {
 		this.templateLoaderPath = Files.createTempDirectory("servlet-").toAbsolutePath();
 
 		fc.setTemplateLoaderPaths("classpath:/", "file://" + this.templateLoaderPath);
+		fc.setServletContext(servletContext);
 		fc.afterPropertiesSet();
 
 		wac.setServletContext(servletContext);

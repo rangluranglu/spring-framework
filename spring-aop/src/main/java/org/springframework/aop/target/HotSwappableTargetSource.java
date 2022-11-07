@@ -42,7 +42,6 @@ public class HotSwappableTargetSource implements TargetSource, Serializable {
 
 
 	/** The current target object. */
-	@SuppressWarnings("serial")
 	private Object target;
 
 

@@ -17,11 +17,12 @@
 package org.springframework.web.socket.client;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.springframework.context.Lifecycle;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.Nullable;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.WebSocketSession;
@@ -33,7 +34,6 @@ import org.springframework.web.socket.handler.LoggingWebSocketHandlerDecorator;
  * {@link WebSocketHandler}.
  *
  * @author Rossen Stoyanchev
- * @author Sam Brannen
  * @since 4.0
  */
 public class WebSocketConnectionManager extends ConnectionManagerSupport {
@@ -107,16 +107,16 @@ public class WebSocketConnectionManager extends ConnectionManagerSupport {
 
 	@Override
 	public void startInternal() {
-		if (this.client instanceof Lifecycle lifecycle && !lifecycle.isRunning()) {
-			lifecycle.start();
+		if (this.client instanceof Lifecycle && !((Lifecycle) this.client).isRunning()) {
+			((Lifecycle) this.client).start();
 		}
 		super.startInternal();
 	}
 
 	@Override
 	public void stopInternal() throws Exception {
-		if (this.client instanceof Lifecycle lifecycle && lifecycle.isRunning()) {
-			lifecycle.stop();
+		if (this.client instanceof Lifecycle && ((Lifecycle) this.client).isRunning()) {
+			((Lifecycle) this.client).stop();
 		}
 		super.stopInternal();
 	}
@@ -132,15 +132,17 @@ public class WebSocketConnectionManager extends ConnectionManagerSupport {
 			logger.info("Connecting to WebSocket at " + getUri());
 		}
 
-		CompletableFuture<WebSocketSession> future =
-				this.client.execute(this.webSocketHandler, this.headers, getUri());
+		ListenableFuture<WebSocketSession> future =
+				this.client.doHandshake(this.webSocketHandler, this.headers, getUri());
 
-		future.whenComplete((result, ex) -> {
-			if (result != null) {
-				this.webSocketSession = result;
+		future.addCallback(new ListenableFutureCallback<WebSocketSession>() {
+			@Override
+			public void onSuccess(@Nullable WebSocketSession result) {
+				webSocketSession = result;
 				logger.info("Successfully connected");
 			}
-			else if (ex != null) {
+			@Override
+			public void onFailure(Throwable ex) {
 				logger.error("Failed to connect", ex);
 			}
 		});

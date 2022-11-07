@@ -20,6 +20,7 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,7 +31,6 @@ import reactor.core.publisher.Mono;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.client.reactive.ClientHttpRequest;
@@ -59,8 +59,8 @@ public class ExchangeResult {
 
 	private static final Log logger = LogFactory.getLog(ExchangeResult.class);
 
-	private static final List<MediaType> PRINTABLE_MEDIA_TYPES = List.of(
-			MediaType.parseMediaType("application/*+json"), MediaType.APPLICATION_XML,
+	private static final List<MediaType> PRINTABLE_MEDIA_TYPES = Arrays.asList(
+			MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML,
 			MediaType.parseMediaType("text/*"), MediaType.APPLICATION_FORM_URLENCODED);
 
 
@@ -169,21 +169,23 @@ public class ExchangeResult {
 		return this.requestBody.block(this.timeout);
 	}
 
+
 	/**
-	 * Return the HTTP status code as an {@link HttpStatusCode} value.
+	 * Return the HTTP status code as an {@link HttpStatus} enum value.
+	 * @throws IllegalArgumentException in case of an unknown HTTP status code
+	 * @see #getRawStatusCode()
 	 */
-	public HttpStatusCode getStatus() {
+	public HttpStatus getStatus() {
 		return this.response.getStatusCode();
 	}
 
 	/**
-	 * Return the HTTP status code as an integer.
+	 * Return the HTTP status code (potentially non-standard and not resolvable
+	 * through the {@link HttpStatus} enum) as an integer.
 	 * @since 5.1.10
-	 * @deprecated as of 6.0, in favor of {@link #getStatus()}
 	 */
-	@Deprecated(since = "6.0", forRemoval = true)
 	public int getRawStatusCode() {
-		return getStatus().value();
+		return this.response.getRawStatusCode();
 	}
 
 	/**
@@ -249,19 +251,20 @@ public class ExchangeResult {
 				"\n" +
 				formatBody(getRequestHeaders().getContentType(), this.requestBody) + "\n" +
 				"\n" +
-				"< " + formatStatus(getStatus()) + "\n" +
+				"< " + formatStatus() + "\n" +
 				"< " + formatHeaders(getResponseHeaders(), "\n< ") + "\n" +
 				"\n" +
 				formatBody(getResponseHeaders().getContentType(), this.responseBody) +"\n" +
 				formatMockServerResult();
 	}
 
-	private String formatStatus(HttpStatusCode statusCode) {
-		String result = statusCode.toString();
-		if (statusCode instanceof HttpStatus status) {
-			result += " " + status.getReasonPhrase();
+	private String formatStatus() {
+		try {
+			return getStatus() + " " + getStatus().getReasonPhrase();
 		}
-		return result;
+		catch (Exception ex) {
+			return Integer.toString(getRawStatusCode());
+		}
 	}
 
 	private String formatHeaders(HttpHeaders headers, String delimiter) {
