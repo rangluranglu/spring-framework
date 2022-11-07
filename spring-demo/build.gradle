@@ -1,0 +1,24 @@
+import jdk.internal.dynalink.linker.LinkerServices
+
+plugins {
+    id 'java'
+}
+
+group 'org.springframework'
+version '5.3.24-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    implementation group: 'org.springframework', name: 'spring-context', version: '4.3.8.RELEASE'
+    implementation group: 'org.aspectj', name: 'aspectjrt', version: '1.9.4'
+    implementation group: 'org.aspectj', name: 'aspectjweaver', version: '1.9.4'
+}
+
+test {
+    useJUnitPlatform()
+}
