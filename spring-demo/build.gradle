@@ -14,9 +14,12 @@ repositories {
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-    implementation group: 'org.springframework', name: 'spring-context', version: '4.3.8.RELEASE'
-    implementation group: 'org.aspectj', name: 'aspectjrt', version: '1.9.4'
-    implementation group: 'org.aspectj', name: 'aspectjweaver', version: '1.9.4'
+    //添加完要构建一下，否则代码中无法引用
+    implementation(project(":spring-context"))
+    implementation(project(":spring-beans"))
+    implementation(project(":spring-core"))
+    implementation(project(":spring-aop"))
+    implementation(project(":spring-instrument"))
 }
 
 test {

@@ -132,6 +132,8 @@ public class AnnotatedBeanDefinitionReader {
 	 * @param componentClasses one or more component classes,
 	 * e.g. {@link Configuration @Configuration} classes
 	 */
+
+	// 注册多个配置类
 	public void register(Class<?>... componentClasses) {
 		for (Class<?> componentClass : componentClasses) {
 			registerBean(componentClass);
@@ -249,8 +251,9 @@ public class AnnotatedBeanDefinitionReader {
 	private <T> void doRegisterBean(Class<T> beanClass, @Nullable String name,
 			@Nullable Class<? extends Annotation>[] qualifiers, @Nullable Supplier<T> supplier,
 			@Nullable BeanDefinitionCustomizer[] customizers) {
-
+		// 生成BeanDefinition
 		AnnotatedGenericBeanDefinition abd = new AnnotatedGenericBeanDefinition(beanClass);
+		//这里判断当前bean是否存在@Conditional注解，如果不满足条件得话就直接跳过，不处理。通常主配置类不带条件，就是说这里不会跳过。
 		if (this.conditionEvaluator.shouldSkip(abd.getMetadata())) {
 			return;
 		}
@@ -258,8 +261,10 @@ public class AnnotatedBeanDefinitionReader {
 		abd.setInstanceSupplier(supplier);
 		ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(abd);
 		abd.setScope(scopeMetadata.getScopeName());
+		// 生成beanName
 		String beanName = (name != null ? name : this.beanNameGenerator.generateBeanName(abd, this.registry));
 
+		//完善主配置类的BeanDefinition，解析@Lazy，@Primary，@DependsOn，@Role，@Description
 		AnnotationConfigUtils.processCommonDefinitionAnnotations(abd);
 		if (qualifiers != null) {
 			for (Class<? extends Annotation> qualifier : qualifiers) {
@@ -280,6 +285,7 @@ public class AnnotatedBeanDefinitionReader {
 			}
 		}
 
+		// 注册到容器中
 		BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(abd, beanName);
 		definitionHolder = AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
 		BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, this.registry);

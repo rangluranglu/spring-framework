@@ -145,6 +145,7 @@ final class PostProcessorRegistrationDelegate {
 
 			// Now, invoke the postProcessBeanFactory callback of all processors handled so far.
 			invokeBeanFactoryPostProcessors(registryProcessors, beanFactory);
+			
 			invokeBeanFactoryPostProcessors(regularPostProcessors, beanFactory);
 		}
 

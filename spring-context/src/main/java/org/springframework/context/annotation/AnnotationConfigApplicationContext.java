@@ -64,6 +64,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * Create a new AnnotationConfigApplicationContext that needs to be populated
 	 * through {@link #register} calls and then manually {@linkplain #refresh refreshed}.
 	 */
+	// 无参构造类
 	public AnnotationConfigApplicationContext() {
 		StartupStep createAnnotatedBeanDefReader = this.getApplicationStartup().start("spring.context.annotated-bean-reader.create");
 		this.reader = new AnnotatedBeanDefinitionReader(this);
@@ -88,8 +89,12 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * {@link Configuration @Configuration} classes
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
+		// 构造DefaultListableBeanFactory， AnnotatedDefinitionReader, ClassPathBeanDefinitionScanner
 		this();
+		// 注册配置文件
 		register(componentClasses);
+
+		// 刷新，重要，生命周期
 		refresh();
 	}
 
@@ -160,6 +165,8 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * @see #scan(String...)
 	 * @see #refresh()
 	 */
+
+	// 注册一个或多个配置类，自动成为bean
 	@Override
 	public void register(Class<?>... componentClasses) {
 		Assert.notEmpty(componentClasses, "At least one component class must be specified");
@@ -177,6 +184,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * @see #register(Class...)
 	 * @see #refresh()
 	 */
+	// 扫描方法
 	@Override
 	public void scan(String... basePackages) {
 		Assert.notEmpty(basePackages, "At least one base package must be specified");
