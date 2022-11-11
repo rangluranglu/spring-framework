@@ -30,6 +30,9 @@ import org.springframework.lang.Nullable;
  * Allows manipulation of contained property sources and provides a constructor
  * for copying an existing {@code PropertySources} instance.
  *
+ * {@link PropertySources} 接口的默认实现。
+ * 允许操作包含的属性源并提供用于复制现有 {@code PropertySources} 实例的构造函数。
+ *
  * <p>Where <em>precedence</em> is mentioned in methods such as {@link #addFirst}
  * and {@link #addLast}, this is with regard to the order in which property sources
  * will be searched when resolving a given property with a {@link PropertyResolver}.

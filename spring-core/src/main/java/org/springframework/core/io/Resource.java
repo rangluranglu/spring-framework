@@ -33,6 +33,9 @@ import org.springframework.lang.Nullable;
  * <p>An InputStream can be opened for every resource if it exists in
  * physical form, but a URL or File handle can just be returned for
  * certain resources. The actual behavior is implementation-specific.
+ * 从底层资源的实际类型（例如文件或类路径资源）中抽象出来的资源描述符的接口。
+ * <p>如果 InputStream 以物理形式存在，则可以为每个资源打开它，但只能为某些资源返回 URL 或文件句柄。实际行为是特定于实现的。
+ *
  *
  * @author Juergen Hoeller
  * @since 28.12.2003
@@ -56,6 +59,9 @@ public interface Resource extends InputStreamSource {
 	 * <p>This method performs a definitive existence check, whereas the
 	 * existence of a {@code Resource} handle only guarantees a valid
 	 * descriptor handle.
+	 *
+	 * 确定此资源是否实际以物理形式存在。
+	 * <p>此方法执行确定性存在检查，而 {@code Resource} 句柄的存在仅保证有效的描述符句柄。
 	 */
 	boolean exists();
 
@@ -67,6 +73,9 @@ public interface Resource extends InputStreamSource {
 	 * Note that actual content reading may still fail when attempted.
 	 * However, a value of {@code false} is a definitive indication
 	 * that the resource content cannot be read.
+	 * 指示是否可以通过 {@link #getInputStream()} 读取此资源的非空内容。
+	 * <p>对于存在的典型资源描述符将是 {@code true}，因为它严格暗示从 5.1 开始的 {@link #exists()} 语义。
+	 * 请注意，实际内容读取可能在尝试时仍会失败。但是，{@code false} 的值是无法读取资源内容的明确指示。
 	 * @see #getInputStream()
 	 * @see #exists()
 	 */
@@ -79,6 +88,9 @@ public interface Resource extends InputStreamSource {
 	 * If {@code true}, the InputStream cannot be read multiple times,
 	 * and must be read and closed to avoid resource leaks.
 	 * <p>Will be {@code false} for typical resource descriptors.
+	 *
+	 * 指示此资源是否表示具有打开流的句柄。如果 {@code true}，InputStream 不能被多次读取，必须被读取并关闭以避免资源泄漏
+	 * <p>对于典型的资源描述符将是 {@code false}。
 	 */
 	default boolean isOpen() {
 		return false;

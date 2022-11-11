@@ -547,49 +547,59 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
 
 			// Prepare this context for refreshing.
-			// 准备上下文环境
+			// 1. 准备上下文环境：记录容器启动时间，标记以启动状态
 			prepareRefresh();
 
 			// Tell the subclass to refresh the internal bean factory.
 			// 工厂创建：BeanFactory第一次开始创建的时候,有xml解析逻辑。
 			// 默认 DefaultListableBeanFactory
+			// 2. 告诉资料启动 refreshBeanFactory() 方法，Bean定义资源文件的载入从子类的refreshBeanFactory()方法启动
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
 			// Prepare the bean factory for use in this context.
 			//给容器中注册了环境信息作为单实例Bean方便后续自动装配；放了一些后置处理器处理（监听、xxAware功能）
+			// 3. 为BeanFactouy 配置处理器，例如类加载器、事件处理器等
 			prepareBeanFactory(beanFactory);
 
 			try {
 				// Allows post-processing of the bean factory in context subclasses.
-				// //留给子类的模板方法，允许子类继续对工厂执行一些处理
+				// 4. 前置处理器
 				postProcessBeanFactory(beanFactory);
 
 				StartupStep beanPostProcess = this.applicationStartup.start("spring.context.beans.post-process");
 				// Invoke factory processors registered as beans in the context.
 
 				// 执行所有的BeanFactory后置增强器；利用BeanFactory后置增强器对工厂进行修改或者增强,配置类会在这里进行解析。
+				// 5. 调用所有注册的BeanFactoryPostProcessor 的 Bean
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
+				// 6. 为BeanFactory注册BeanPost事件处理器， BeanPostProcessor是Bean后置处理器，用于监听容器触发的事件
 				registerBeanPostProcessors(beanFactory);
 				beanPostProcess.end();
 
 				// Initialize message source for this context.
+				// 7. 初始化信息源，和国际化相关
 				initMessageSource();
 
 				// Initialize event multicaster for this context.
+				// 8. 初始化容器事件传播器
 				initApplicationEventMulticaster();
 
 				// Initialize other special beans in specific context subclasses.
+				// 9. 调用子类的某些特殊Bean初始化方法
 				onRefresh();
 
 				// Check for listener beans and register them.
+				// 10. 为事件传播器注册事件监听器
 				registerListeners();
 
 				// Instantiate all remaining (non-lazy-init) singletons.
+				// 11. 初始化所有剩下的单例Bean
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
+				// 12. 初始化容器的生命周期事件处理器，并发布容器的生命周期事件
 				finishRefresh();
 			}
 
@@ -600,18 +610,23 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				}
 
 				// Destroy already created singletons to avoid dangling resources.
+				// 13. 销毁已创建的Bean
 				destroyBeans();
 
 				// Reset 'active' flag.
+				// 14. 取消refresh操作， 重置容器的同步标识
 				cancelRefresh(ex);
 
 				// Propagate exception to caller.
+				// 抛出异常
 				throw ex;
 			}
 
 			finally {
 				// Reset common introspection caches in Spring's core, since we
 				// might not ever need metadata for singleton beans anymore...
+
+				// 重设公共缓存， 不在需要单例bean的原数据
 				resetCommonCaches();
 				contextRefresh.end();
 			}
@@ -624,6 +639,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 */
 	protected void prepareRefresh() {
 		// Switch to active.
+		// 设置启动时间
 		this.startupDate = System.currentTimeMillis();
 		this.closed.set(false);
 		this.active.set(true);
@@ -638,6 +654,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Initialize any placeholder property sources in the context environment.
+		// 初始化上下文环境中的任何占位符属性源， 子类实现：模板方法。
 		initPropertySources();
 
 		// Validate that all properties marked as required are resolvable:
@@ -645,6 +662,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		getEnvironment().validateRequiredProperties();
 
 		// Store pre-refresh ApplicationListeners...
+		// 存储预刷新 ApplicationListeners...
 		if (this.earlyApplicationListeners == null) {
 			this.earlyApplicationListeners = new LinkedHashSet<>(this.applicationListeners);
 		}
@@ -1461,6 +1479,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * <p>A subclass will either create a new bean factory and hold a reference to it,
 	 * or return a single BeanFactory instance that it holds. In the latter case, it will
 	 * usually throw an IllegalStateException if refreshing the context more than once.
+	 *
+	 * 子类必须实现此方法才能执行实际的配置加载。在任何其他初始化工作之前，该方法由 {@link #refresh()} 调用。
+	 * <p>子类要么创建一个新的 bean 工厂并持有对它的引用，要么返回它持有的单个 BeanFactory 实例。
+	 * 在后一种情况下，如果多次刷新上下文，它通常会抛出 IllegalStateException。
 	 * @throws BeansException if initialization of the bean factory failed
 	 * @throws IllegalStateException if already initialized and multiple refresh
 	 * attempts are not supported

@@ -117,17 +117,28 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 	 * bean factory, shutting down the previous bean factory (if any) and
 	 * initializing a fresh bean factory for the next phase of the context's lifecycle.
 	 */
+
+	/**
+	 * 此实现执行此上下文的底层 bean 工厂的实际刷新，
+	 * 关闭先前的 bean 工厂（如果有）并为上下文生命周期的下一阶段初始化一个新的 bean 工厂。
+	 */
+
 	@Override
 	protected final void refreshBeanFactory() throws BeansException {
+		// 如果已经持有BeanFactory， 销毁容器中的ben， 关闭容器
 		if (hasBeanFactory()) {
 			destroyBeans();
 			closeBeanFactory();
 		}
 		try {
+			// 创建IOC 容器
 			DefaultListableBeanFactory beanFactory = createBeanFactory();
 			beanFactory.setSerializationId(getId());
+
+			// 自定义IOC容器，如设置启动参数，开启注解的自动装配等。
 			customizeBeanFactory(beanFactory);
-			// 加载beanDefinitions
+			// 装载BeanDefinitions
+			// 委派模式，在当前类中只定义了抽象的loadBeanDefinitions方法，具体的实现调用子类容器 loadBeanDefinitions(beanFactory);
 			loadBeanDefinitions(beanFactory);
 			this.beanFactory = beanFactory;
 		}

@@ -25,6 +25,10 @@ import java.util.Map;
  * conversion service and more through the {@link ConfigurablePropertyResolver}
  * superinterface.
  *
+ * 大多数（如果不是全部）{@link Environment} 类型都将实现的配置接口。
+ * 提供用于设置活动和默认配置文件以及操作基础属性源的工具。
+ * 允许客户端通过 {@link ConfigurablePropertyResolver} 超级接口设置和验证所需的属性、自定义转换服务等。
+ *
  * <h2>Manipulating property sources</h2>
  * <p>Property sources may be removed, reordered, or replaced; and additional
  * property sources may be added using the {@link MutablePropertySources}

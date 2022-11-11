@@ -312,6 +312,8 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 
 	/**
 	 * Load bean definitions from the specified XML file.
+	 *
+	 * 从指定的 XML 文件加载 bean definitions。
 	 * @param encodedResource the resource descriptor for the XML file,
 	 * allowing to specify an encoding to use for parsing the file
 	 * @return the number of bean definitions found
@@ -323,13 +325,16 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 			logger.trace("Loading XML bean definitions from " + encodedResource);
 		}
 
+		// 获取已经加载的resources, ThreadLocal
 		Set<EncodedResource> currentResources = this.resourcesCurrentlyBeingLoaded.get();
 
+		// set 添加新的 resource
 		if (!currentResources.add(encodedResource)) {
 			throw new BeanDefinitionStoreException(
 					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
 		}
 
+		//
 		try (InputStream inputStream = encodedResource.getResource().getInputStream()) {
 			InputSource inputSource = new InputSource(inputStream);
 			if (encodedResource.getEncoding() != null) {
@@ -383,6 +388,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see #doLoadDocument
 	 * @see #registerBeanDefinitions
 	 */
+	// 从xml 文件 加载具体的bean definition
 	protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
 			throws BeanDefinitionStoreException {
 

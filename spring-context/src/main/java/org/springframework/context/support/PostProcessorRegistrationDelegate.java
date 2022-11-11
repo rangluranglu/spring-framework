@@ -56,6 +56,7 @@ final class PostProcessorRegistrationDelegate {
 	}
 
 
+	// 静态方案
 	public static void invokeBeanFactoryPostProcessors(
 			ConfigurableListableBeanFactory beanFactory, List<BeanFactoryPostProcessor> beanFactoryPostProcessors) {
 
