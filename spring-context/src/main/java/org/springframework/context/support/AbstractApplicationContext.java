@@ -554,6 +554,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			// 工厂创建：BeanFactory第一次开始创建的时候,有xml解析逻辑。
 			// 默认 DefaultListableBeanFactory
 			// 2. 告诉资料启动 refreshBeanFactory() 方法，Bean定义资源文件的载入从子类的refreshBeanFactory()方法启动
+			// 加载beandefinition， config配置
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
 			// Prepare the bean factory for use in this context.
@@ -704,6 +705,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 */
 	protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
 		// Tell the internal bean factory to use the context's class loader etc.
+		// 设置beanClassLoader
 		beanFactory.setBeanClassLoader(getClassLoader());
 		if (!shouldIgnoreSpel) {
 			beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
@@ -728,6 +730,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.registerResolvableDependency(ApplicationContext.class, this);
 
 		// Register early post-processor for detecting inner beans as ApplicationListeners.
+		// 设置PostProcessor
 		beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
 
 		// Detect a LoadTimeWeaver and prepare for weaving, if found.

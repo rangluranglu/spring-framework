@@ -69,9 +69,10 @@ public abstract class CoroutinesUtils {
 	 * Invoke a suspending function and converts it to {@link Mono} or
 	 * {@link Flux}.
 	 */
+	@SuppressWarnings("deprecation")
 	public static Publisher<?> invokeSuspendingFunction(Method method, Object target, Object... args) {
 		KFunction<?> function = Objects.requireNonNull(ReflectJvmMapping.getKotlinFunction(method));
-		if (method.isAccessible() && !KCallablesJvm.isAccessible(function)) {
+ 		if (method.isAccessible() && !KCallablesJvm.isAccessible(function)) {
 			KCallablesJvm.setAccessible(function, true);
 		}
 		KClassifier classifier = function.getReturnType().getClassifier();

@@ -89,6 +89,8 @@ import org.springframework.util.Assert;
  * from} any Java {@link AnnotatedElement}. They may also be used for sources that
  * don't use reflection (such as those that directly parse bytecode).
  *
+ *
+ *
  * <p>Different {@linkplain SearchStrategy search strategies} can be used to locate
  * related source elements that contain the annotations to be aggregated. For
  * example, {@link SearchStrategy#TYPE_HIERARCHY} will search both superclasses and

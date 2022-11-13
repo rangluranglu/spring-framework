@@ -128,8 +128,10 @@ abstract class AnnotationsScanner {
 				if (result != null) {
 					return result;
 				}
+				// 里面有 componentScan 注解
 				Annotation[] declaredAnnotations = getDeclaredAnnotations(source, true);
 				if (relevant == null && declaredAnnotations.length > 0) {
+					// 注解上的注解
 					relevant = root.getAnnotations();
 					remaining = relevant.length;
 				}
@@ -451,9 +453,11 @@ abstract class AnnotationsScanner {
 			cached = true;
 		}
 		else {
+			// 获得所有注解
 			annotations = source.getDeclaredAnnotations();
 			if (annotations.length != 0) {
 				boolean allIgnored = true;
+				// 遍历注解
 				for (int i = 0; i < annotations.length; i++) {
 					Annotation annotation = annotations[i];
 					if (isIgnorable(annotation.annotationType()) ||
