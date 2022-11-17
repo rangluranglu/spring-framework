@@ -1139,6 +1139,8 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	 * Validate and prepare the given method override.
 	 * Checks for existence of a method with the specified name,
 	 * marking it as not overloaded if none found.
+	 *
+	 * 验证并准备给定的方法覆盖。检查是否存在具有指定名称的方法，如果未找到，则将其标记为未重载。
 	 * @param mo the MethodOverride object to validate
 	 * @throws BeanDefinitionValidationException in case of validation failure
 	 */
@@ -1151,6 +1153,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 		}
 		else if (count == 1) {
 			// Mark override as not overloaded, to avoid the overhead of arg type checking.
+			// 将覆盖标记为未重载，以避免 arg 类型检查的开销。
 			mo.setOverloaded(false);
 		}
 	}

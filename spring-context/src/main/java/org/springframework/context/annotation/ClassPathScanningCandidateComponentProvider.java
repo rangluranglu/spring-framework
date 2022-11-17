@@ -416,8 +416,10 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	private Set<BeanDefinition> scanCandidateComponents(String basePackage) {
 		Set<BeanDefinition> candidates = new LinkedHashSet<>();
 		try {
+			// classpath*:com/li/**/*.class 扫描class 文件
 			String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX +
 					resolveBasePackage(basePackage) + '/' + this.resourcePattern;
+			// 这里扫描包下所有的class 文件
 			Resource[] resources = getResourcePatternResolver().getResources(packageSearchPath);
 			boolean traceEnabled = logger.isTraceEnabled();
 			boolean debugEnabled = logger.isDebugEnabled();
@@ -442,6 +444,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 							}
 						}
 					}
+					// 没有定义成bean，没有加@Component等注解
 					else {
 						if (traceEnabled) {
 							logger.trace("Ignored because not matching any filter: " + resource);

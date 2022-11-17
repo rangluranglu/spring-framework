@@ -139,11 +139,14 @@ public class DefaultLifecycleProcessor implements LifecycleProcessor, BeanFactor
 	// Internal helpers
 
 	private void startBeans(boolean autoStartupOnly) {
+		// 实现了LifrCycle的Bean
 		Map<String, Lifecycle> lifecycleBeans = getLifecycleBeans();
 		Map<Integer, LifecycleGroup> phases = new TreeMap<>();
-
+		// 遍历
 		lifecycleBeans.forEach((beanName, bean) -> {
 			if (!autoStartupOnly || (bean instanceof SmartLifecycle && ((SmartLifecycle) bean).isAutoStartup())) {
+				// 确定给定bean的生命周期阶段
+				// 将bean添加到对应的生命周期组
 				int phase = getPhase(bean);
 				phases.computeIfAbsent(
 						phase,
@@ -151,6 +154,7 @@ public class DefaultLifecycleProcessor implements LifecycleProcessor, BeanFactor
 				).add(beanName, bean);
 			}
 		});
+		// 不为空， 出发start方法
 		if (!phases.isEmpty()) {
 			phases.values().forEach(LifecycleGroup::start);
 		}
